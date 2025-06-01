@@ -23,3 +23,7 @@ libnet_la_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3
 
 libnet_la_includedir = ${includedir}
 libnet_la_include_HEADERS = libnet.h
+
+bin_PROGRAMS = corenetlib_api
+corenetlib_api_SOURCES = corenetlib_api.c
+corenetlib_api_LDADD = libnet.la
