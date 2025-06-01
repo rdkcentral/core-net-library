@@ -773,7 +773,10 @@ int handle_interface_add_to_bridge(int argc, char *argv[]) {
     int found = 0;
     char *line = strtok(output, "\n");
     while (line != NULL) {
-        // Skip the first line (bridge info header)
+        // Skip leading spaces/tabs
+        while (*line == ' ' || *line == '\t') line++;
+
+        // Skip the first line (bridge info header), only check lines starting with tab/space
         if (strstr(line, if_name) != NULL) {
             found = 1;
             break;
@@ -1811,18 +1814,11 @@ int handle_interface_set_flags(int argc, char *argv[]) {
         return -1;
     }
 
-    // Check for each flag substring individually
-    int up = strstr(output, "UP") != NULL;
-    // int broadcast = strstr(output, "BROADCAST") != NULL;
-    int running = strstr(output, "RUNNING") != NULL;
-    // int multicast = strstr(output, "MULTICAST") != NULL;
-
-
-    if (up && running) {
-        printf("PASS: ifconfig output contains UP and RUNNING for %s.\n", if_name);
+    if (strstr(output, "UP BROADCAST RUNNING MULTICAST")) {
+        printf("PASS: ifconfig output contains 'UP BROADCAST RUNNING MULTICAST' for %s.\n", if_name);
         return 0;
     } else {
-        printf("FAIL: Expected flags not found in ifconfig output for %s.\n", if_name);
+        printf("FAIL: Expected flags string not found in ifconfig output for %s.\n", if_name);
         return -1;
     }
 }
