@@ -34,12 +34,6 @@
 #include "libnet_util.h"
 #include "libnet.h"
 
-struct neighbour_cb_data {
-        struct neighbour_info *neigh_info;
-        struct nl_sock *sock;
-        int af_filter;                     // Address family filter: 0 for no filter, or AF_INET/AF_INET6.
-    };
-
 /**
  * file_write
  * @file_name: File name to write
@@ -1996,74 +1990,19 @@ void bridge_free_info(struct bridge_info *bridge)
         }
 }
 
-// Helper function: Allocate and initialize a neighbour_info structure.
-struct neighbour_info* init_neighbour_info(void) {
-        struct neighbour_info *nei_info = (struct neighbour_info*)calloc(1, sizeof(struct neighbour_info));
-        if (!nei_info) {
-            CNL_LOG_ERROR("Failed to allocate memory for neighbour_info\n");
-            return NULL;
-        }
-        nei_info->neigh_count = 0;
-        nei_info->neigh_capacity = INITIAL_NEIGH_CAPACITY;
-        nei_info->neigh_arr = (struct _neighbour_info*)calloc(nei_info->neigh_capacity, sizeof(struct _neighbour_info));
-        if (!nei_info->neigh_arr) {
-            CNL_LOG_ERROR("Failed to allocate memory for neighbor array\n");
-            free(nei_info);
-            return NULL;
-        }
-        return nei_info;
-    }
-
 static void neighbour_get_cb(struct nl_object *match, void *arg)
 {
-        struct neighbour_cb_data *cb_data = arg;
-        struct neighbour_info *neigh_info = cb_data->neigh_info;
-        struct nl_sock *sock = cb_data->sock;
+        struct neighbour_info *neigh_info = arg;
         char buf[40] = {0};
 
-        // Extract the local address.
-        const struct nl_addr *local_addr = rtnl_addr_get_local((struct rtnl_addr *) match);
-        // If a filter is set, skip entries that do not match the address family.
-        if (cb_data->af_filter != 0 && local_addr) {
-                if (nl_addr_get_family(local_addr) != cb_data->af_filter)
+        if (MAX_NEIGH_COUNT < neigh_info->neigh_count)
                 return;
-        }
 
-        // Check if the current capacity is reached; if so, expand the array.
-        if (neigh_info->neigh_count >= neigh_info->neigh_capacity) {
-                int new_capacity = (neigh_info->neigh_capacity > 0) ? (neigh_info->neigh_capacity * 2) : INITIAL_NEIGH_CAPACITY;
-                struct _neighbour_info *new_neigh_arr = realloc(neigh_info->neigh_arr, new_capacity * sizeof(struct _neighbour_info));
-                if (!new_neigh_arr) {
-                        // Log the error and abort processing this neighbor.
-                        CNL_LOG_ERROR("Memory allocation error while expanding neighbor array\n");
-                        return;
-                }
-                // Optionally initialize the new memory to zero.
-                memset(new_neigh_arr + neigh_info->neigh_capacity, 0, (new_capacity - neigh_info->neigh_capacity) * sizeof(struct _neighbour_info));
-                neigh_info->neigh_arr = new_neigh_arr;
-                neigh_info->neigh_capacity = new_capacity;
-        }
-
-        nl_addr2str(local_addr, buf, sizeof(buf));
+        nl_addr2str(rtnl_addr_get_local((struct rtnl_addr *) match), buf, sizeof(buf));
         neigh_info->neigh_arr[neigh_info->neigh_count].local = strdup(buf);
 
         nl_addr2str(rtnl_neigh_get_lladdr((struct rtnl_neigh *) match), buf, sizeof(buf));
         neigh_info->neigh_arr[neigh_info->neigh_count].mac = strdup(buf);
-
-        // Fetch the interface index and retrieve the interface name
-        int ifindex = rtnl_neigh_get_ifindex((struct rtnl_neigh *) match);
-        // Allocate a link cache using the socket
-        struct nl_cache *link_cache;
-        if (rtnl_link_alloc_cache(sock, AF_UNSPEC, &link_cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate rtnl link cache\n");
-        }
-        struct rtnl_link *link = rtnl_link_get(link_cache, ifindex);
-        if (link) {
-                const char *ifname = rtnl_link_get_name(link);
-                neigh_info->neigh_arr[neigh_info->neigh_count].ifname = strdup(ifname);
-                rtnl_link_put(link);
-        }
-        nl_cache_free(link_cache); // Ensure cache is freed
 
         int state = rtnl_neigh_get_state((struct rtnl_neigh *) match);
 
@@ -2079,12 +2018,6 @@ static void neighbour_get_cb(struct nl_object *match, void *arg)
                         free(neigh_info->neigh_arr[neigh_info->neigh_count].mac);
                         neigh_info->neigh_arr[neigh_info->neigh_count].mac = NULL;
                 }
-
-                if (neigh_info->neigh_arr[neigh_info->neigh_count].ifname != NULL) {
-                        free(neigh_info->neigh_arr[neigh_info->neigh_count].ifname);
-                        neigh_info->neigh_arr[neigh_info->neigh_count].ifname = NULL;
-                }
-
                 return;
         }
 
@@ -2097,18 +2030,21 @@ static void neighbour_get_cb(struct nl_object *match, void *arg)
 /**
  * neighbour_get_list - lists all entries except for NONE, NOARP and NUD_PERMANENT
  * @arr: array to fill neighbour table
- * @mac: Optional MAC Filter. NULL if no filtering required
- * @if_name: Optional Interface name filter. If no interface filtering is desired, NULL
- * @af_filter: Pass 0 for the af_filter if no IP family filtering is desired. AF_INET- IPv4, AF_INET6 - IPv6
  * Get bridge details
  */
-libnet_status neighbour_get_list(struct neighbour_info *arr, char *mac, char *if_name, int af_filter)
+libnet_status neighbour_get_list(struct neighbour_info *arr)
 {
         struct nl_sock *sock;
         struct rtnl_neigh *neigh;
+        struct nl_cache *link_cache;
         struct nl_cache *neigh_cache;
-        struct nl_addr *nl_mac_addr = NULL;
         libnet_status err = CNL_STATUS_FAILURE;
+        errno_t rc = -1;
+
+        rc = memset_s(arr, sizeof(struct neighbour_info), 0, sizeof(struct neighbour_info));
+        ERR_CHK(rc);
+        if (rc < EOK)
+                return CNL_STATUS_FAILURE;
 
         sock = libnet_alloc_socket();
         if (sock == NULL) {
@@ -2121,39 +2057,11 @@ libnet_status neighbour_get_list(struct neighbour_info *arr, char *mac, char *if
         }
 
         neigh_cache = libnet_neigh_alloc_cache(sock);
-
         neigh = libnet_neigh_alloc();
-        // If a valid MAC is provided, convert and set it in filter object "neigh"
-        if (mac != NULL) {
-                unsigned char mac_addr[6];
-                if (sscanf(mac, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                        &mac_addr[0], &mac_addr[1], &mac_addr[2],
-                        &mac_addr[3], &mac_addr[4], &mac_addr[5]) == 6) {
-                    nl_mac_addr = nl_addr_build(AF_LLC, mac_addr, sizeof(mac_addr));
-                    if (nl_mac_addr != NULL) {
-                        rtnl_neigh_set_lladdr(neigh, nl_mac_addr);
-                    } else {
-                        CNL_LOG_ERROR("Failed to create nl_addr object\n");
-                    }
-                } else {
-                    CNL_LOG_ERROR("Invalid MAC address format\n");
-                }
-            }
-        // Filter by interface name if provided
-        if (if_name != NULL) {
-                int ifindex = if_nametoindex(if_name);
-                if (ifindex > 0) {
-                    rtnl_neigh_set_ifindex(neigh, ifindex);
-                } else {
-                    CNL_LOG_ERROR("Invalid interface name: %s\n", if_name);
-                }
-        }
-        struct neighbour_cb_data cb_data = { .neigh_info = arr, .sock = sock, .af_filter = af_filter };
 
         nl_cache_foreach_filter(neigh_cache, OBJ_CAST(neigh),
-                                neighbour_get_cb, (void *)&cb_data);
-        if (nl_mac_addr)
-                nl_addr_put(nl_mac_addr);
+                                neighbour_get_cb, (void *)arr);
+
         rtnl_neigh_put(neigh);
         nl_cache_put(neigh_cache);
         err = CNL_STATUS_SUCCESS;
@@ -2177,13 +2085,8 @@ void neighbour_free_neigh(struct neighbour_info *neigh_info)
                 free(neigh_info->neigh_arr[neigh_info->neigh_count-1].mac);
                 neigh_info->neigh_arr[neigh_info->neigh_count-1].mac = NULL;
 
-                free(neigh_info->neigh_arr[neigh_info->neigh_count-1].ifname);
-                neigh_info->neigh_arr[neigh_info->neigh_count-1].ifname = NULL;
-
                 neigh_info->neigh_count--;
         }
-        free(neigh_info->neigh_arr);
-        free(neigh_info);
 }
 
 /**

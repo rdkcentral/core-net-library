@@ -74,14 +74,12 @@ struct _neighbour_info {
         int state; /* neighbour table reachable state */
         char *local; /* ip address */
         char *mac; /* mac address */
-        char *ifname; /* interface name*/
 };
 
 struct neighbour_info {
-#define INITIAL_NEIGH_CAPACITY 32
+#define MAX_NEIGH_COUNT 32
         int neigh_count;
-        int neigh_capacity; 
-        struct _neighbour_info *neigh_arr;
+        struct _neighbour_info neigh_arr[MAX_NEIGH_COUNT];
 };
 
 typedef enum _cnl_ifstats_mask {
@@ -460,7 +458,7 @@ libnet_status neighbour_delete(char *dev, char *ip);
  * @arr: array to fill neighbour table
  * Get bridge details
  */
-libnet_status neighbour_get_list(struct neighbour_info *arr, char *mac, char *if_name, int af_filter);
+libnet_status neighbour_get_list(struct neighbour_info *arr);
 
 /**
  * @brief Free members of neighbour_info structure
@@ -495,10 +493,3 @@ libnet_status get_ipv6_address(char *if_name, char *ipv6_addr, size_t addr_len);
  * Free neighbour_info members
  */
 void neighbour_free_neigh(struct neighbour_info *neigh_info);
-
-/**
- * init_neighbour_info
- * 
- * Allocate neighbour_info members dynamically
- */
-struct neighbour_info* init_neighbour_info(void);
