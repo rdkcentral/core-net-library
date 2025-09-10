@@ -7,8 +7,8 @@
 #include <net/if.h>
 #include "libnet.h"
 #include <ctype.h>
-#include <libxml2/parser.h>
-#include <libxml2/tree.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 // Define missing constants if not already defined
 #ifndef CNL_STATUS_NOT_FOUND
