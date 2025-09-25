@@ -1738,6 +1738,7 @@ int handle_interface_set_flags(int argc, char *argv[]) {
         return -1;
     }
 
+<<<<<<< HEAD
     // Check for each flag substring individually
     int up = strstr(output, "UP") != NULL;
     // int broadcast = strstr(output, "BROADCAST") != NULL;
@@ -1749,6 +1750,13 @@ int handle_interface_set_flags(int argc, char *argv[]) {
         return 0;
     } else {
         printf("FAIL: Expected flags not found in ifconfig output for %s.\n", if_name);
+=======
+    if (strstr(output, "UP BROADCAST RUNNING MULTICAST")) {
+        printf("PASS: ifconfig output contains 'UP BROADCAST RUNNING MULTICAST' for %s.\n", if_name);
+        return 0;
+    } else {
+        printf("FAIL: Expected flags string not found in ifconfig output for %s.\n", if_name);
+>>>>>>> 64e9661e36ff7c50d49bcf77251c0cc46dd50296
         return -1;
     }
 }
