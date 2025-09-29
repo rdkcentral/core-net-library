@@ -7,6 +7,8 @@
 #include <net/if.h>
 #include "libnet.h"
 #include <ctype.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 // Define missing constants if not already defined
 #ifndef CNL_STATUS_NOT_FOUND
@@ -24,6 +26,9 @@
 #ifndef IFNAME_SIZE
 #define IFNAME_SIZE 16
 #endif
+
+#define MAX_TESTS 50
+#define MAX_ARGS 5
 
 int total_tests = 0;
 int total_passed = 0;
@@ -44,6 +49,85 @@ typedef struct {
     const char *usage;
     api_handler_t handler;
 } api_entry_t;
+
+// Map handler name string to function pointer
+typedef struct {
+    const char *name;
+    api_handler_t handler;
+} HandlerEntry;
+
+// Forward declarations for all possible handler functions
+int handle_addr_add(int argc, char *argv[]);
+int handle_addr_delete(int argc, char *argv[]);
+int handle_interface_up(int argc, char *argv[]);
+int handle_interface_down(int argc, char *argv[]);
+int handle_vlan_create(int argc, char *argv[]);
+int handle_vlan_delete(int argc, char *argv[]);
+int handle_interface_set_mtu(int argc, char *argv[]);
+int handle_rule_add(int argc, char *argv[]);
+int handle_rule_delete(int argc, char *argv[]);
+int handle_route_add(int argc, char *argv[]);
+int handle_route_delete(int argc, char *argv[]);
+int handle_bridge_create(int argc, char *argv[]);
+int handle_bridge_delete(int argc, char *argv[]);
+int handle_bridge_free_info(int argc, char *argv[]);
+int handle_bridge_get_info(int argc, char *argv[]);
+int handle_interface_get_ip(int argc, char *argv[]);
+int handle_interface_get_mac(int argc, char *argv[]);
+int handle_interface_set_netmask(int argc, char *argv[]);
+int handle_bridge_set_stp(int argc, char *argv[]);
+int handle_interface_status(int argc, char *argv[]);
+int handle_interface_exist(int argc, char *argv[]);
+int handle_interface_rename(int argc, char *argv[]);
+int handle_interface_delete(int argc, char *argv[]);
+int handle_interface_set_mac(int argc, char *argv[]);
+int handle_addr_derive_broadcast(int argc, char *argv[]);
+int handle_interface_set_flags(int argc, char *argv[]);
+int handle_get_ipv6_address(int argc, char *argv[]);
+int handle_interface_add_to_bridge(int argc, char *argv[]);
+int handle_interface_remove_from_bridge(int argc, char *argv[]);
+
+static HandlerEntry handler_table[] = {
+    {"handle_addr_add", handle_addr_add},
+    {"handle_addr_delete", handle_addr_delete},
+    {"handle_interface_up", handle_interface_up},
+    {"handle_interface_down", handle_interface_down},
+    {"handle_vlan_create", handle_vlan_create},
+    {"handle_vlan_delete", handle_vlan_delete},
+    {"handle_interface_set_mtu", handle_interface_set_mtu},
+    {"handle_rule_add", handle_rule_add},
+    {"handle_rule_delete", handle_rule_delete},
+    {"handle_route_add", handle_route_add},
+    {"handle_route_delete", handle_route_delete},
+    {"handle_bridge_create", handle_bridge_create},
+    {"handle_bridge_delete", handle_bridge_delete},
+    {"handle_bridge_free_info", handle_bridge_free_info},
+    {"handle_bridge_get_info", handle_bridge_get_info},
+    {"handle_interface_get_ip", handle_interface_get_ip},
+    {"handle_interface_get_mac", handle_interface_get_mac},
+    {"handle_interface_set_netmask", handle_interface_set_netmask},
+    {"handle_bridge_set_stp", handle_bridge_set_stp},
+    {"handle_interface_status", handle_interface_status},
+    {"handle_interface_exist", handle_interface_exist},
+    {"handle_interface_rename", handle_interface_rename},
+    {"handle_interface_delete", handle_interface_delete},
+    {"handle_interface_set_mac", handle_interface_set_mac},
+    {"handle_addr_derive_broadcast", handle_addr_derive_broadcast},
+    {"handle_interface_set_flags", handle_interface_set_flags},
+    {"handle_get_ipv6_address", handle_get_ipv6_address},
+    {"handle_interface_add_to_bridge", handle_interface_add_to_bridge},
+    {"handle_interface_remove_from_bridge", handle_interface_remove_from_bridge},
+    {NULL, NULL}
+};
+
+api_handler_t get_handler_by_name(const char *name) {
+    if (!name) return NULL;
+    for (int i = 0; handler_table[i].name != NULL; i++) {
+        if (strcmp(name, handler_table[i].name) == 0)
+            return handler_table[i].handler;
+    }
+    return NULL;
+}
 
 // Forward declaration for run_all_tests
 int run_all_tests(int argc, char *argv[]);
@@ -148,12 +232,6 @@ int handle_interface_up(int argc, char *argv[]) {
 
         printf("PASS: Validation successful for interface %s.\n", if_name);
         return 0;
-    } else if (result == CNL_STATUS_NOT_FOUND) {
-        printf("FAIL: Interface %s not found.\n", if_name);
-        return -1;
-    } else if (result == CNL_STATUS_ALREADY_UP) {
-        printf("FAIL: Interface %s is already up.\n", if_name);
-        return -1;
     } else {
         printf("FAIL: Failed to bring up interface %s. Error code: %d\n", if_name, result);
         return -1;
@@ -190,12 +268,6 @@ int handle_interface_down(int argc, char *argv[]) {
 
         printf("PASS: Validation successful for interface %s.\n", if_name);
         return 0;
-    } else if (result == CNL_STATUS_NOT_FOUND) {
-        printf("FAIL: Interface %s not found.\n", if_name);
-        return -1;
-    } else if (result == CNL_STATUS_ALREADY_DOWN) {
-        printf("FAIL: Interface %s is already down.\n", if_name);
-        return -1;
     } else {
         printf("FAIL: Failed to bring down interface %s. Error code: %d\n", if_name, result);
         return -1;
@@ -1772,9 +1844,136 @@ typedef struct {
     const char *description;
     int is_negative; // 0 for positive test, 1 for negative test
     int argc;
-    char *argv[5];
+    char *argv[MAX_ARGS];
     int (*handler)(int argc, char *argv[]);
 } TestCase;
+
+typedef struct {
+    const char *testcase_name;
+    TestCase array[MAX_TESTS];
+    int count;
+} TestGroup;
+
+TestGroup test_groups[] = {
+    {"addr_tests", {0}, 0},
+    {"addr_delete_tests", {0}, 0},
+    {"interface_up_tests", {0}, 0},
+    {"interface_down_tests", {0}, 0},
+    {"vlan_tests", {0}, 0},
+    {"mtu_tests", {0}, 0},
+    {"rule_tests", {0}, 0},
+    {"route_tests", {0}, 0},
+    {"bridge_tests", {0}, 0},
+    {"ip_mac_tests", {0}, 0},
+    {"netmask_stp_tests", {0}, 0},
+    {"stp_status_tests", {0}, 0},
+    {"rename_delete_mac_tests", {0}, 0},
+    {"addr_derive_broadcast_tests", {0}, 0},
+    {"interface_set_flags_tests", {0}, 0},
+    {"get_ipv6_address_tests", {0}, 0},
+    {"bridge_interface_tests", {0}, 0},
+};
+int num_groups = sizeof(test_groups) / sizeof(test_groups[0]);
+
+void parse_testcase(xmlNode *testcase_node, TestCase *test) {
+    xmlNode *cur_node = NULL;
+    int arg_index = 0;
+
+    for (cur_node = testcase_node->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type != XML_ELEMENT_NODE) continue;
+
+        if (xmlStrcmp(cur_node->name, (const xmlChar *)"description") == 0) {
+            test->description = strdup((char *)xmlNodeGetContent(cur_node));
+        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"is_negative") == 0) {
+            test->is_negative = atoi((char *)xmlNodeGetContent(cur_node));
+        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argc") == 0) {
+            test->argc = atoi((char *)xmlNodeGetContent(cur_node));
+        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argv") == 0) {
+            xmlNode *arg_node = NULL;
+            for (arg_node = cur_node->children; arg_node && arg_index < MAX_ARGS; arg_node = arg_node->next) {
+                if (arg_node->type == XML_ELEMENT_NODE &&
+                    xmlStrcmp(arg_node->name, (const xmlChar *)"arg") == 0) {
+                    test->argv[arg_index++] = strdup((char *)xmlNodeGetContent(arg_node));
+                }
+            }
+        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"handler") == 0) {
+            char *handler_name = (char *)xmlNodeGetContent(cur_node);
+            test->handler = get_handler_by_name(handler_name);
+            free(handler_name); // Free the temporary string
+        }
+    }
+}
+
+void parse_xml(const char *filename) {
+    printf("[DEBUG] Parsing XML file: %s\n", filename);
+    xmlDoc *doc = xmlReadFile(filename, NULL, 0);
+    if (!doc) {
+        fprintf(stderr, "[DEBUG] Failed to parse XML file\n");
+        return;
+    }
+
+    xmlNode *root = xmlDocGetRootElement(doc);
+    if (!root) {
+        fprintf(stderr, "[DEBUG] No root element in XML file\n");
+        xmlFreeDoc(doc);
+        xmlCleanupParser();
+        return;
+    }
+    printf("[DEBUG] Root element: %s\n", root->name);
+
+    xmlNode *cur_node = NULL;
+
+    for (cur_node = root->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+            printf("[DEBUG] Found element: %s\n", cur_node->name);
+        }
+        for (int g = 0; g < num_groups; g++) {
+            if (cur_node->type == XML_ELEMENT_NODE &&
+                xmlStrcmp(cur_node->name, (const xmlChar *)test_groups[g].testcase_name) == 0) {
+                printf("[DEBUG] Found '%s' node\n", test_groups[g].testcase_name);
+                xmlNode *test_node = NULL;
+                for (test_node = cur_node->children; test_node; test_node = test_node->next) {
+                    if (test_node->type == XML_ELEMENT_NODE &&
+                        xmlStrcmp(test_node->name, (const xmlChar *)"testcase") == 0 &&
+                        test_groups[g].count < MAX_TESTS) {
+                        // printf("[DEBUG] Parsing testcase #%d in %s\n", test_groups[g].count + 1, test_groups[g].testcase_name);
+                        parse_testcase(test_node, &test_groups[g].array[test_groups[g].count++]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Print summary for all groups
+    for (int g = 0; g < num_groups; g++) {
+        printf("[DEBUG] Finished parsing XML for %s. Total testcases loaded: %d\n", test_groups[g].testcase_name, test_groups[g].count);
+    }
+    xmlFreeDoc(doc);
+    xmlCleanupParser();
+}
+
+
+void print_testcases(TestGroup *groups, int num_groups) {
+    for (int g = 0; g < num_groups; g++) {
+        printf("\n==== %s ====\n", groups[g].testcase_name);
+        if (groups[g].count == 0) {
+            printf("No test cases loaded for %s.\n", groups[g].testcase_name);
+            continue;
+        }
+        for (int i = 0; i < groups[g].count; i++) {
+            printf("\nTestCase #%d:\n", i + 1);
+            printf("  Description: %s\n", groups[g].array[i].description ? groups[g].array[i].description : "(null)");
+            printf("  Is Negative: %d\n", groups[g].array[i].is_negative);
+            printf("  Argc: %d\n", groups[g].array[i].argc);
+            printf("  Argv:");
+            for (int j = 0; j < groups[g].array[i].argc; j++) {
+                printf(" [%d]: %s", j, groups[g].array[i].argv[j] ? groups[g].array[i].argv[j] : "(null)");
+            }
+            printf("\n");
+            printf("  Handler: %p\n", (void *)groups[g].array[i].handler);
+        }
+    }
+}
 
 void run_testcases(TestCase *tests, int num_tests) {
     for (int i = 0; i < num_tests; i++) {
@@ -1823,232 +2022,16 @@ int run_all_tests(int argc, char *argv[]) {
         printf("%s: %s\n", rc == 0 && strstr(output, validations[i].match) ? "PASS" : "FAIL", validations[i].desc);
     }
 
-  
-    // Testcase list
-    TestCase addr_tests[] = {
-        { "Add and verify address", 0, 3, {"corenetlib_api", "addr_add", "dev brlan18 10.14.1.13/24"}, handle_addr_add },
-        { "Add invalid address", 1, 3, {"corenetlib_api", "addr_add", "dev brlan18 invalid_ip"}, handle_addr_add },
-        { "Add address with negative prefix", 1, 3, {"corenetlib_api", "addr_add", "dev brlan18 10.14.1.13/-1"}, handle_addr_add },
-        { "Add address with non-numeric prefix", 1, 3, {"corenetlib_api", "addr_add", "dev brlan18 10.14.1.13/abc"}, handle_addr_add },
-        { "Add with invalid valid_lft", 1, 3, {"corenetlib_api", "addr_add", "dev brlan18 10.14.1.15/24 valid_lft abc preferred_lft 567"}, handle_addr_add },
-        { "Add with invalid preferred_lft", 1, 3, {"corenetlib_api", "addr_add", "dev brlan18 10.14.1.16/24 valid_lft 1234 preferred_lft xyz"}, handle_addr_add },
-        {"NULL address in addr_add", 1, 3, {"corenetlib_api", "addr_add", NULL}, handle_addr_add},
-     };
+    parse_xml("/tmp/corenetlib_tests.xml");
     
-    TestCase addr_delete_tests[] = {
-    { "Delete and verify address", 0, 3, {"corenetlib_api", "addr_delete", "dev brlan18 10.14.1.13/24"}, handle_addr_delete },
-    { "Delete non-existent address", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 192.168.1.1/24"}, handle_addr_delete },
-    { "Delete address with invalid IP format", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 10.14.1.999/24"}, handle_addr_delete },
-    { "Delete address with negative prefix length", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 10.14.1.13/-1"}, handle_addr_delete },
-    { "Delete address with non-numeric prefix length", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 10.14.1.13/abc"}, handle_addr_delete },
-    { "Delete address with missing arguments", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18"}, handle_addr_delete },
-    { "Delete address with invalid dev keyword", 1, 3, {"corenetlib_api", "addr_delete", "brlan18 10.14.1.13/24"}, handle_addr_delete },
-    { "Delete address with overly long interface name", 1, 3, {"corenetlib_api", "addr_delete", "dev verylonginterfacename 10.14.1.13/24"}, handle_addr_delete },
-    { "Delete address with invalid characters in IP", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 10.14.1.ab/24"}, handle_addr_delete },
-    { "Delete address with empty IP address", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 /24"}, handle_addr_delete },
-    { "Delete address with IPv6 address in IPv4 context", 1, 3, {"corenetlib_api", "addr_delete", "dev brlan18 2001:db8::1/64"}, handle_addr_delete },
-    {"NULL address in addr_delete",1,  3, {"corenetlib_api", "addr_delete", NULL}, handle_addr_delete},
-    };
-  
-    TestCase interface_up_tests[] = {
-    { "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "brlan18"}, handle_interface_up },
-    { "Bring up non-existent interface", 1, 3, {"corenetlib_api", "interface_up", "nonexistent"}, handle_interface_up },
-    { "Bring up interface with numeric name", 1, 3, {"corenetlib_api", "interface_up", "123344"}, handle_interface_up },
-    {"NULL interface in interface_up",1,  3, {"corenetlib_api", "interface_up", NULL}, handle_interface_up},
-    };
-  
-    TestCase interface_down_tests[] = {
-    { "Bring down and verify interface", 0, 3, {"corenetlib_api", "interface_down", "brlan18"}, handle_interface_down },
-    {"NULL interface in interface_down",1, 3, {"corenetlib_api", "interface_down", NULL}, handle_interface_down},
-    };
-  
-    TestCase vlan_tests[] = {
-    { "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "brlan18"}, handle_interface_up },
-    { "Create and verify VLAN", 0, 4, {"corenetlib_api", "vlan_create", "brlan18", "110"}, handle_vlan_create },
-    { "Create VLAN with invalid ID", 1, 4, {"corenetlib_api", "vlan_create", "brlan18", "5000"}, handle_vlan_create },
-    { "Create VLAN with negative ID", 1, 4, {"corenetlib_api", "vlan_create", "brlan18", "-10"}, handle_vlan_create },
-    { "Delete and verify VLAN", 0, 3, {"corenetlib_api", "vlan_delete", "brlan18.110"}, handle_vlan_delete },
-    { "Delete non-existent VLAN", 1, 3, {"corenetlib_api", "vlan_delete", "brlan18.999"}, handle_vlan_delete },
-    {"NULL VLAN ID",1,  4, {"corenetlib_api", "vlan_create", "brlan18", NULL}, handle_vlan_create},
-    };
+    for (int g = 0; g < num_groups; g++) {
+        if (test_groups[g].count == 0) {
+            printf("No test cases loaded for %s.\n", test_groups[g].testcase_name);
+            continue;
+        }
+        run_testcases(test_groups[g].array, test_groups[g].count);
 
-    TestCase mtu_tests[] = {
-    { "Set and verify MTU", 0, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", "1400"}, handle_interface_set_mtu },
-    { "Set invalid MTU", 1, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", "99999"}, handle_interface_set_mtu },
-    { "Set MTU with negative value", 1, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", "-1500"}, handle_interface_set_mtu },
-    { "Set MTU with string value", 1, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", "invalid_mtu"}, handle_interface_set_mtu },
-    { "Set MTU with zero value", 1, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", "0"}, handle_interface_set_mtu },
-    {"NULL MTU value",1, 4, {"corenetlib_api", "interface_set_mtu", "brlan18", NULL}, handle_interface_set_mtu},
-    };
-
-    TestCase rule_tests[] = {
-    // Positive test cases for rule_add
-    { "Add and verify rule with 'from' and 'lookup'", 0, 3, {"corenetlib_api", "rule_add", "from 172.16.12.2 lookup 15"}, handle_rule_add },
-    { "Add and verify rule with 'to'", 0, 3, {"corenetlib_api", "rule_add", "to 192.168.100.1 lookup 15"}, handle_rule_add },
-    { "Add and verify rule with 'iif'", 0, 3, {"corenetlib_api", "rule_add", "iif brlan1 lookup 15"}, handle_rule_add },
-    { "Add and verify rule with 'oif'", 0, 3, {"corenetlib_api", "rule_add", "oif brlan1 lookup 15"}, handle_rule_add },
-    { "Add and verify rule with 'table'", 0, 3, {"corenetlib_api", "rule_add", "from 10.10.10.10 table 100"}, handle_rule_add },
-    { "Add and verify rule with '-4' (IPv4)", 0, 3, {"corenetlib_api", "rule_add", "-4 from 172.16.12.2 lookup 15"}, handle_rule_add },
-    { "Add and verify rule with '-6' (IPv6)", 0, 3, {"corenetlib_api", "rule_add", "-6 from 2001:db8::1 lookup 15"}, handle_rule_add },
-    {"NULL rule argument",1,  3, {"corenetlib_api", "rule_add", NULL}, handle_rule_add},
-
-    // Negative test cases for rule_add
-    { "Add rule with missing 'from' value", 1, 3, {"corenetlib_api", "rule_add", "from lookup 15"}, handle_rule_add },
-    { "Add rule with missing 'lookup' value", 1, 3, {"corenetlib_api", "rule_add", "from 10.0.0.1 lookup"}, handle_rule_add },
-    { "Add rule with unknown table", 1, 3, {"corenetlib_api", "rule_add", "from 10.0.0.1 lookup no_such_table"}, handle_rule_add },
-    { "Add rule with malformed IP", 1, 3, {"corenetlib_api", "rule_add", "from 999.999.999.999 lookup 15"}, handle_rule_add },
-    { "Add rule with missing oif name", 1, 3, {"corenetlib_api", "rule_add", "from 10.0.0.1 oif"}, handle_rule_add },
-    { "Add rule with empty args", 1, 3, {"corenetlib_api", "rule_add", ""}, handle_rule_add },
-    
-
-    // Positive and negative test cases for rule_delete
-    { "Delete and verify rule with 'from' and 'lookup'", 0, 3, {"corenetlib_api", "rule_delete", "from 172.16.12.2 lookup 15"}, handle_rule_delete },
-    { "Delete and verify rule with 'iif' and 'table'", 0, 3, {"corenetlib_api", "rule_delete", "iif brlan0 table erouter"}, handle_rule_delete },
-    { "Delete non-existent rule (invalid IP and table)", 0, 3, {"corenetlib_api", "rule_delete", "from 192.168.99.99 lookup 999"}, handle_rule_delete },
-    //{ "Delete with malformed input", 1, 3, {"corenetlib_api", "rule_delete", "invalid_rule"}, handle_rule_delete }
-    {"NULL rule argument",1,  3, {"corenetlib_api", "rule_delete", NULL}, handle_rule_delete},
-};  
-
-    // Step 2: Route-related tests
-    TestCase route_tests[] = {
-    // Route Add
-    { "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "brlan18"}, handle_interface_up },
-    { "Add and verify route", 0, 3, {"corenetlib_api", "route_add", "dev brlan18 192.168.18.0/24"}, handle_route_add },
-    { "Add route with via", 0, 3, {"corenetlib_api", "route_add", "192.168.19.0/24 dev brlan18 via 192.168.18.1"}, handle_route_add },
-    { "Add route with src", 0, 3, {"corenetlib_api", "route_add", "192.168.20.0/24 dev brlan18 src 192.168.18.1"}, handle_route_add },
-    { "Add route with metric", 0, 3, {"corenetlib_api", "route_add", "192.168.21.0/24 dev brlan18 metric 5"}, handle_route_add },
-    { "Add route with mtu", 0, 3, {"corenetlib_api", "route_add", "192.168.22.0/24 dev brlan18 mtu 1400"}, handle_route_add },
-    { "Add route with proto", 0, 3, {"corenetlib_api", "route_add", "192.168.24.0/24 dev brlan18 proto static"}, handle_route_add },
-    { "Add route with scope", 0, 3, {"corenetlib_api", "route_add", "192.168.25.0/24 dev brlan18 scope link"}, handle_route_add },
-    { "Add invalid route", 1, 3, {"corenetlib_api", "route_add", "invalid_route"}, handle_route_add },
-    { "NULL route argument", 1, 3, {"corenetlib_api", "route_add", NULL}, handle_route_add },
-
-    // Route Delete
-    { "Delete route", 0, 3, {"corenetlib_api", "route_delete", "dev brlan18 192.168.18.0/24"}, handle_route_delete },
-    { "Delete route with via", 0, 3, {"corenetlib_api", "route_delete", "192.168.19.0/24 dev brlan18 via 192.168.18.1"}, handle_route_delete },
-    { "Delete route with src", 0, 3, {"corenetlib_api", "route_delete", "192.168.20.0/24 dev brlan18 src 192.168.18.1"}, handle_route_delete },
-    { "Delete route with metric", 0, 3, {"corenetlib_api", "route_delete", "192.168.21.0/24 dev brlan18 metric 5"}, handle_route_delete },
-    { "Delete route with mtu", 0, 3, {"corenetlib_api", "route_delete", "192.168.22.0/24 dev brlan18 mtu 1400"}, handle_route_delete },
-    { "Delete route with table", 0, 3, {"corenetlib_api", "route_delete", "192.168.23.0/24 dev brlan18 table 100"}, handle_route_delete },
-    { "Delete route with proto", 0, 3, {"corenetlib_api", "route_delete", "192.168.24.0/24 dev brlan18 proto static"}, handle_route_delete },
-    { "Delete route with scope", 0, 3, {"corenetlib_api", "route_delete", "192.168.25.0/24 dev brlan18 scope link"}, handle_route_delete },
-    { "Delete route with type", 0, 3, {"corenetlib_api", "route_delete", "192.168.26.0/24 dev brlan18 type unicast"}, handle_route_delete },
-    { "Delete non-existent route", 0, 3, {"corenetlib_api", "route_delete", "dev brlan18 192.168.99.0/24"}, handle_route_delete }
-    };
-
-  
-    TestCase bridge_tests[] = {
-    { "Create and verify bridge", 0, 3, {"corenetlib_api", "bridge_create", "brlan303"}, handle_bridge_create },
-    { "Delete and verify bridge", 0, 3, {"corenetlib_api", "bridge_delete", "brlan303"}, handle_bridge_delete },
-    { "Delete non-existent bridge", 1, 3, {"corenetlib_api", "bridge_delete", "nonexistent"}, handle_bridge_delete },
-    { "Add and verify bridge free info", 0, 3, {"corenetlib_api", "bridge_free_info", "brlan18"}, handle_bridge_free_info },
-    { "Free info for non-existent bridge", 1, 3, {"corenetlib_api", "bridge_free_info", "nonexistent"}, handle_bridge_free_info },
-    { "Get and verify bridge info", 0, 3, {"corenetlib_api", "bridge_get_info", "brlan18"}, handle_bridge_get_info },
-    { "Get info for non-existent bridge", 1, 3, {"corenetlib_api", "bridge_get_info", "nonexistent"}, handle_bridge_get_info }
-    };
-  
-    TestCase ip_mac_tests[] = {
-    { "Get and validate interface IP", 0, 3, {"corenetlib_api", "interface_get_ip", "brlan18"}, handle_interface_get_ip },
-    { "Get IP for non-existent interface", 1, 3, {"corenetlib_api", "interface_get_ip", "nonexistent"}, handle_interface_get_ip },
-    { "Get and validate interface MAC", 0, 3, {"corenetlib_api", "interface_get_mac", "brlan18"}, handle_interface_get_mac },
-    { "Get MAC for non-existent interface", 1, 3, {"corenetlib_api", "interface_get_mac", "nonexistent"}, handle_interface_get_mac },
-    };
-
-    TestCase netmask_stp_tests[] = {
-    { "Set and validate interface netmask", 0, 4, {"corenetlib_api", "interface_set_netmask", "brlan18", "255.255.0.0"}, handle_interface_set_netmask },
-    { "Set netmask for non-existent interface", 1, 4, {"corenetlib_api", "interface_set_netmask", "nonexistent", "255.255.255.0"}, handle_interface_set_netmask },
-    { "Set and validate bridge STP ON", 0, 4, {"corenetlib_api", "bridge_set_stp", "brlan18", "on"}, handle_bridge_set_stp },
-    {"NULL bridge interface for bridge_set_stp", 1,  4, {"corenetlib_api", "bridge_set_stp", NULL, "on"}, handle_bridge_set_stp}
-    };
-  
-  
-    TestCase stp_status_tests[] = {
-    { "Set and validate bridge STP OFF", 0, 4, {"corenetlib_api", "bridge_set_stp", "brlan18", "off"}, handle_bridge_set_stp },
-    { "Set STP for non-existent bridge", 1, 4, {"corenetlib_api", "bridge_set_stp", "nonexistent", "on"}, handle_bridge_set_stp },
-    { "Get and validate interface status (UP)", 0, 3, {"corenetlib_api", "interface_status", "brlan18"}, handle_interface_status },
-    { "Get status for non-existent interface", 1, 3, {"corenetlib_api", "interface_status", "nonexistent"}, handle_interface_status },
-    { "interface_exist for present interface", 0, 3, {"corenetlib_api", "interface_exist", "brlan18"}, handle_interface_exist },
-    { "interface_exist for absent interface", 1, 3, {"corenetlib_api", "interface_exist", "brlan200"}, handle_interface_exist }
-    };
-
-    TestCase rename_delete_mac_tests[] = {
-    { "Create and verify bridge", 0, 3, {"corenetlib_api", "bridge_create", "brlan999"}, handle_bridge_create },
-    { "vlan_create brlan999 180", 0, 4, {"corenetlib_api", "vlan_create", "brlan999", "180"}, handle_vlan_create },
-    { "interface_rename brlan99.180 brlan220", 0, 4, {"corenetlib_api", "interface_rename", "brlan999.180", "brlan220"}, handle_interface_rename },
-    { "interface_delete brlan220", 0, 3, {"corenetlib_api", "interface_delete", "brlan220"}, handle_interface_delete },
-    { "Delete and verify bridge", 0, 3, {"corenetlib_api", "bridge_delete", "brlan999"}, handle_bridge_delete },
-    { "interface_delete for non-existent interface", 1, 3, {"corenetlib_api", "interface_delete", "brlan220"}, handle_interface_delete },
-    { "interface_set_mac brlan18 22:7C:EA:99:9F:61", 0, 4, {"corenetlib_api", "interface_set_mac", "brlan18", "22:7C:EA:99:9F:61"}, handle_interface_set_mac },
-    { "interface_set_mac nonexistent 22:7C:EA:99:9F:99", 1, 4, {"corenetlib_api", "interface_set_mac", "nonexistent", "22:7C:EA:99:9F:99"}, handle_interface_set_mac },
-    {"NULL interface name for interface_set_mac",1,  4, {"corenetlib_api", "interface_set_mac", NULL, "22:7C:EA:99:9F:61"}, handle_interface_set_mac},
-    };
-
-    TestCase addr_derive_broadcast_tests[] = {
-    { "addr_derive_broadcast 10.1.1.1 24", 0, 4, {"corenetlib_api", "addr_derive_broadcast", "10.1.1.1", "24"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 192.168.0.1 16", 0, 4, {"corenetlib_api", "addr_derive_broadcast", "192.168.0.1", "16"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 172.16.5.10 20", 0, 4, {"corenetlib_api", "addr_derive_broadcast", "172.16.5.10", "20"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 0.0.0.0 0", 0, 4, {"corenetlib_api", "addr_derive_broadcast", "0.0.0.0", "0"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 255.255.255.255 32", 0, 4, {"corenetlib_api", "addr_derive_broadcast", "255.255.255.255", "32"}, handle_addr_derive_broadcast },
-
-    { "addr_derive_broadcast 999.999.999.999 24", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "999.999.999.999", "24"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast abc.def.ghi.jkl 24", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "abc.def.ghi.jkl", "24"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast (empty ip) 24", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "", "24"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 10.1.1.1 33", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "10.1.1.1", "33"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 10.1.1.1 -1", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "10.1.1.1", "-1"}, handle_addr_derive_broadcast },
-    { "addr_derive_broadcast 10.1.1.1 abc", 1, 4, {"corenetlib_api", "addr_derive_broadcast", "10.1.1.1", "abc"}, handle_addr_derive_broadcast },
-    {"NULL IP for derive broadcast", 1,  4, {"corenetlib_api", "addr_derive_broadcast", NULL, "24"}, handle_addr_derive_broadcast }
-    };
-
-    TestCase interface_set_flags_tests[] = {
-    { "interface_set_flags UP only", 0, 4, {"corenetlib_api", "interface_set_flags", "brlan18", "1"}, handle_interface_set_flags },
-     
-    //Negative Test Cases
-    { "interface_set_flags on non-existent interface", 1, 4, {"corenetlib_api", "interface_set_flags", "fakeif0", "1"}, handle_interface_set_flags },
-    { "interface_set_flags with non-numeric flag", 1, 4, {"corenetlib_api", "interface_set_flags", "brlan18", "abc"}, handle_interface_set_flags },
-    { "interface_set_flags with LOOPBACK flag on brlan18", 1, 4, {"corenetlib_api", "interface_set_flags", "brlan18", "8"}, handle_interface_set_flags },
-    };
-  
-    TestCase get_ipv6_address_tests[] = {
-    // Positive
-    { "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "erouter0"}, handle_interface_up },
-    //{ "get_ipv6_address for present interface", 0, 3, {"corenetlib_api", "get_ipv6_address", "erouter0"}, handle_get_ipv6_address },
-
-    { "get_ipv6_address for absent interface", 1, 3, {"corenetlib_api", "get_ipv6_address", "nonexistent"}, handle_get_ipv6_address },
-    { "get_ipv6_address with empty argument", 1, 3, {"corenetlib_api", "get_ipv6_address", ""}, handle_get_ipv6_address },
-    { "get_ipv6_address with NULL argument", 1, 3, {"corenetlib_api", "get_ipv6_address", NULL}, handle_get_ipv6_address },
-    { "get_ipv6_address on interface with no IPv6", 1, 3, {"corenetlib_api", "get_ipv6_address", "lo"}, handle_get_ipv6_address }
-    };
-   
-   TestCase bridge_interface_tests[] = {
-     { "Create and verify bridge", 0, 3, {"corenetlib_api", "bridge_create", "brlan333"}, handle_bridge_create },
-     { "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "brlan333"}, handle_interface_up },
-     { "vlan_create brlan333 110", 0, 4, {"corenetlib_api", "vlan_create", "brlan333", "110"}, handle_vlan_create },
-     { "bridge_create brlan999", 0, 3, {"corenetlib_api", "bridge_create", "brlan999"}, handle_bridge_create },
-     //{ "Bring up and verify interface", 0, 3, {"corenetlib_api", "interface_up", "brlan999"}, handle_interface_up },
-     { "interface_add_to_bridge brlan999 brlan333.110", 0, 4, {"corenetlib_api", "interface_add_to_bridge", "brlan999", "brlan333.110"}, handle_interface_add_to_bridge },
-     { "interface_remove_from_bridge brlan333.110", 0, 3, {"corenetlib_api", "interface_remove_from_bridge", "brlan333.110"}, handle_interface_remove_from_bridge },
-     //{ "Delete bridge brlan999", 0, 3, {"corenetlib_api", "bridge_delete", "brlan999"}, handle_bridge_delete }
-     };
-
-    // Run tests
-    run_testcases(addr_tests, sizeof(addr_tests) / sizeof(addr_tests[0]));
-    run_testcases(addr_delete_tests, sizeof(addr_delete_tests)/sizeof(addr_delete_tests[0]));
-    run_testcases(interface_up_tests, sizeof(interface_up_tests)/sizeof(interface_up_tests[0]));
-    run_testcases(interface_down_tests, sizeof(interface_down_tests)/sizeof(interface_down_tests[0]));
-    run_testcases(vlan_tests, sizeof(vlan_tests)/sizeof(vlan_tests[0]));
-    run_testcases(mtu_tests, sizeof(mtu_tests)/sizeof(mtu_tests[0]));
-    run_testcases(rule_tests, sizeof(rule_tests)/sizeof(rule_tests[0]));
-    run_testcases(route_tests, sizeof(route_tests)/sizeof(route_tests[0]));
-    run_testcases(bridge_tests, sizeof(bridge_tests)/sizeof(bridge_tests[0]));
-    run_testcases(ip_mac_tests, sizeof(ip_mac_tests)/sizeof(ip_mac_tests[0]));
-    run_testcases(netmask_stp_tests, sizeof(netmask_stp_tests)/sizeof(netmask_stp_tests[0]));
-    run_testcases(stp_status_tests, sizeof(stp_status_tests)/sizeof(stp_status_tests[0]));
-    run_testcases(rename_delete_mac_tests, sizeof(rename_delete_mac_tests)/sizeof(rename_delete_mac_tests[0]));
-    run_testcases(addr_derive_broadcast_tests, sizeof(addr_derive_broadcast_tests)/sizeof(addr_derive_broadcast_tests[0]));
-    run_testcases(interface_set_flags_tests, sizeof(interface_set_flags_tests)/sizeof(interface_set_flags_tests[0]));
-    run_testcases(get_ipv6_address_tests, sizeof(get_ipv6_address_tests)/sizeof(get_ipv6_address_tests[0]));
-    run_testcases(bridge_interface_tests, sizeof(bridge_interface_tests)/sizeof(bridge_interface_tests[0]));
-
+    }
 
     // Step 2: Remove the temporary bridge interface after tests
     printf("\nRemoving temporary interface: %s...\n", test_interface);
