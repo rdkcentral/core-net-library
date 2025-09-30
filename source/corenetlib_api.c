@@ -1893,7 +1893,13 @@ void parse_testcase(xmlNode *testcase_node, TestCase *test) {
             for (arg_node = cur_node->children; arg_node && arg_index < MAX_ARGS; arg_node = arg_node->next) {
                 if (arg_node->type == XML_ELEMENT_NODE &&
                     xmlStrcmp(arg_node->name, (const xmlChar *)"arg") == 0) {
-                    test->argv[arg_index++] = strdup((char *)xmlNodeGetContent(arg_node));
+                    char *arg_content = (char *)xmlNodeGetContent(arg_node);
+                    if (arg_content && strcmp(arg_content, "null") == 0) {
+                        test->argv[arg_index++] = NULL;
+                    } else {
+                        test->argv[arg_index++] = strdup(arg_content);
+                    }
+                    free(arg_content); // Free the temporary string
                 }
             }
         } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"handler") == 0) {
