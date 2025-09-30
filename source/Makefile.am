@@ -29,5 +29,4 @@ libnet_la_include_HEADERS = libnet.h
 bin_PROGRAMS = corenetlib_api
 corenetlib_api_CPPFLAGS = $(shell pkg-config --cflags libxml-2.0)
 corenetlib_api_SOURCES = corenetlib_api.c
-corenetlib_api_LDFLAGS = $(shell pkg-config --libs libxml-2.0)
-corenetlib_api_LDADD = libnet.la
+corenetlib_api_LDADD = libnet.la $(shell pkg-config --libs libxml-2.0)
