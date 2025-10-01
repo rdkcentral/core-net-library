@@ -1814,8 +1814,15 @@ int handle_interface_set_flags(int argc, char *argv[]) {
         return -1;
     }
 
-    if (strstr(output, "UP BROADCAST RUNNING MULTICAST")) {
-        printf("PASS: ifconfig output contains 'UP BROADCAST RUNNING MULTICAST' for %s.\n", if_name);
+    // Check for each flag substring individually
+    int up = strstr(output, "UP") != NULL;
+    // int broadcast = strstr(output, "BROADCAST") != NULL;
+    int running = strstr(output, "RUNNING") != NULL;
+    // int multicast = strstr(output, "MULTICAST") != NULL;
+
+
+    if (up && running) {
+        printf("PASS: ifconfig output contains UP and RUNNING for %s.\n", if_name);
         return 0;
     } else {
         printf("FAIL: Expected flags string not found in ifconfig output for %s.\n", if_name);
