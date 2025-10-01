@@ -1799,6 +1799,7 @@ int handle_interface_set_flags(int argc, char *argv[]) {
     }
 
     printf("Flags for interface %s set to %u successfully.\n", if_name, flags);
+    sleep(3);
 
     // Simplified validation: just check for common active flags combo
     char validation_command[256];
@@ -1813,11 +1814,12 @@ int handle_interface_set_flags(int argc, char *argv[]) {
     // Check for each flag substring individually
     int up = strstr(output, "UP") != NULL;
     // int broadcast = strstr(output, "BROADCAST") != NULL;
-    // int running = strstr(output, "RUNNING") != NULL;
+    int running = strstr(output, "RUNNING") != NULL;
     // int multicast = strstr(output, "MULTICAST") != NULL;
 
-    if (up) {
-        printf("PASS: ifconfig output contains UP for %s.\n", if_name);
+
+    if (up && running) {
+        printf("PASS: ifconfig output contains UP and RUNNING for %s.\n", if_name);
         return 0;
     } else {
         printf("FAIL: Expected flags not found in ifconfig output for %s.\n", if_name);

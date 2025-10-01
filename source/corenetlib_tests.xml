@@ -51,7 +51,7 @@
       <argv>
         <arg>corenetlib_api</arg>
         <arg>addr_add</arg>
-        <arg>dev brlan18 10.14.1.15/24 valid_lft 1234 preferred_lft 567</arg>
+        <arg>dev brlan18 10.14.1.15/24 valid_lft forever preferred_lft forever</arg>
       </argv>
       <handler>handle_addr_add</handler>
     </testcase>
@@ -141,7 +141,7 @@
       <argv>
         <arg>corenetlib_api</arg>
         <arg>addr_add</arg>
-        <arg>dev brlan18 2001:db8::2/64 valid_lft 1234 preferred_lft 567</arg>
+        <arg>dev brlan18 2001:db8::2/64 valid_lft forever preferred_lft forever</arg>
       </argv>
       <handler>handle_addr_add</handler>
     </testcase>
