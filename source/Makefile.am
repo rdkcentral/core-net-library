@@ -17,7 +17,7 @@
 #
 
 lib_LTLIBRARIES = libnet.la
-libnet_la_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
+libnet_la_CPPFLAGS = -g -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
 libnet_la_SOURCES = libnet.c libnet_util.c
 libnet_la_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3
 
