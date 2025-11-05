@@ -986,8 +986,9 @@ libnet_status addr_delete(char *args)
                 token = strtok(NULL, " ");
         }
 
-        if (rtnl_addr_delete(sock, addr, 0) < 0) {
-                CNL_LOG_ERROR("%s: Unable to del addr \n", args);
+        int ret = rtnl_addr_delete(sock, addr, 0);
+        if (ret < 0) {
+                CNL_LOG_ERROR("%s: Unable to del addr - Returned err %d\n", args, ret);
                 goto FREE_ADDR;
         }
         err = CNL_STATUS_SUCCESS;
