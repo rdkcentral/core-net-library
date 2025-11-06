@@ -1885,29 +1885,35 @@ void parse_testcase(xmlNode *testcase_node, TestCase *test) {
         if (cur_node->type != XML_ELEMENT_NODE) continue;
 
         if (xmlStrcmp(cur_node->name, (const xmlChar *)"description") == 0) {
-            test->description = strdup((char *)xmlNodeGetContent(cur_node));
+            xmlChar *content = xmlNodeGetContent(cur_node);
+            test->description = strdup((char *)content);
+            xmlFree(content);
         } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"is_negative") == 0) {
-            test->is_negative = atoi((char *)xmlNodeGetContent(cur_node));
+            xmlChar *content = xmlNodeGetContent(cur_node);
+            test->is_negative = atoi((char *)content);
+            xmlFree(content);
         } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argc") == 0) {
-            test->argc = atoi((char *)xmlNodeGetContent(cur_node));
+            xmlChar *content = xmlNodeGetContent(cur_node);
+            test->argc = atoi((char *)content);
+            xmlFree(content);
         } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argv") == 0) {
             xmlNode *arg_node = NULL;
             for (arg_node = cur_node->children; arg_node && arg_index < MAX_ARGS; arg_node = arg_node->next) {
                 if (arg_node->type == XML_ELEMENT_NODE &&
                     xmlStrcmp(arg_node->name, (const xmlChar *)"arg") == 0) {
-                    char *arg_content = (char *)xmlNodeGetContent(arg_node);
-                    if (arg_content && strcmp(arg_content, "null") == 0) {
+                    xmlChar *arg_content = xmlNodeGetContent(arg_node);
+                    if (arg_content && strcmp((char *)arg_content, "null") == 0) {
                         test->argv[arg_index++] = NULL;
-                    } else {
-                        test->argv[arg_index++] = strdup(arg_content);
+                    } else if (arg_content) {
+                        test->argv[arg_index++] = strdup((char *)arg_content);
                     }
-                    free(arg_content); // Free the temporary string
+                    xmlFree(arg_content);
                 }
             }
         } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"handler") == 0) {
-            char *handler_name = (char *)xmlNodeGetContent(cur_node);
-            test->handler = get_handler_by_name(handler_name);
-            free(handler_name); // Free the temporary string
+            xmlChar *handler_name = xmlNodeGetContent(cur_node);
+            test->handler = get_handler_by_name((char *)handler_name);
+            xmlFree(handler_name);
         }
     }
 }
