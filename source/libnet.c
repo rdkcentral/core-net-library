@@ -2423,7 +2423,6 @@ FREE_SOCKET:
 FREE_ALLOCATED_ADDR:
     if (err != CNL_STATUS_SUCCESS && allocated_addr) {
         free(allocated_addr);
-        *ipv6_addr = NULL;
     }
 
     return err;

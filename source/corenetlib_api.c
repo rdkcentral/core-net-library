@@ -7,8 +7,7 @@
 #include <net/if.h>
 #include "libnet.h"
 #include <ctype.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#include <json-c/json.h>
 
 // Define missing constants if not already defined
 #ifndef CNL_STATUS_NOT_FOUND
@@ -1877,87 +1876,135 @@ TestGroup test_groups[] = {
 };
 int num_groups = sizeof(test_groups) / sizeof(test_groups[0]);
 
-void parse_testcase(xmlNode *testcase_node, TestCase *test) {
-    xmlNode *cur_node = NULL;
-    int arg_index = 0;
-
-    for (cur_node = testcase_node->children; cur_node; cur_node = cur_node->next) {
-        if (cur_node->type != XML_ELEMENT_NODE) continue;
-
-        if (xmlStrcmp(cur_node->name, (const xmlChar *)"description") == 0) {
-            test->description = strdup((char *)xmlNodeGetContent(cur_node));
-        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"is_negative") == 0) {
-            test->is_negative = atoi((char *)xmlNodeGetContent(cur_node));
-        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argc") == 0) {
-            test->argc = atoi((char *)xmlNodeGetContent(cur_node));
-        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"argv") == 0) {
-            xmlNode *arg_node = NULL;
-            for (arg_node = cur_node->children; arg_node && arg_index < MAX_ARGS; arg_node = arg_node->next) {
-                if (arg_node->type == XML_ELEMENT_NODE &&
-                    xmlStrcmp(arg_node->name, (const xmlChar *)"arg") == 0) {
-                    char *arg_content = (char *)xmlNodeGetContent(arg_node);
-                    if (arg_content && strcmp(arg_content, "null") == 0) {
-                        test->argv[arg_index++] = NULL;
-                    } else {
-                        test->argv[arg_index++] = strdup(arg_content);
-                    }
-                    free(arg_content); // Free the temporary string
-                }
+void parse_testcase(json_object *testcase_obj, TestCase *test) {
+    json_object *temp_obj;
+    
+    // Initialize all fields to safe defaults
+    test->description = NULL;
+    test->is_negative = 0;
+    test->argc = 0;
+    test->handler = NULL;
+    for (int i = 0; i < MAX_ARGS; i++) {
+        test->argv[i] = NULL;
+    }
+    
+    // Parse description
+    if (json_object_object_get_ex(testcase_obj, "description", &temp_obj)) {
+        test->description = strdup(json_object_get_string(temp_obj));
+    }
+    
+    // Parse is_negative
+    if (json_object_object_get_ex(testcase_obj, "is_negative", &temp_obj)) {
+        test->is_negative = json_object_get_int(temp_obj);
+    }
+    
+    // Parse argc
+    if (json_object_object_get_ex(testcase_obj, "argc", &temp_obj)) {
+        test->argc = json_object_get_int(temp_obj);
+    }
+    
+    // Parse argv array
+    if (json_object_object_get_ex(testcase_obj, "argv", &temp_obj)) {
+        int array_len = json_object_array_length(temp_obj);
+        for (int i = 0; i < array_len && i < MAX_ARGS; i++) {
+            json_object *arg_obj = json_object_array_get_idx(temp_obj, i);
+            if (json_object_get_type(arg_obj) == json_type_null) {
+                test->argv[i] = NULL;
+            } else {
+                test->argv[i] = strdup(json_object_get_string(arg_obj));
             }
-        } else if (xmlStrcmp(cur_node->name, (const xmlChar *)"handler") == 0) {
-            char *handler_name = (char *)xmlNodeGetContent(cur_node);
-            test->handler = get_handler_by_name(handler_name);
-            free(handler_name); // Free the temporary string
         }
+    }
+    
+    // Parse handler
+    if (json_object_object_get_ex(testcase_obj, "handler", &temp_obj)) {
+        const char *handler_name = json_object_get_string(temp_obj);
+        test->handler = get_handler_by_name(handler_name);
     }
 }
 
-void parse_xml(const char *filename) {
-    printf("[DEBUG] Parsing XML file: %s\n", filename);
-    xmlDoc *doc = xmlReadFile(filename, NULL, 0);
-    if (!doc) {
-        fprintf(stderr, "[DEBUG] Failed to parse XML file\n");
+void parse_json(const char *filename) {
+    printf("[DEBUG] Parsing JSON file: %s\n", filename);
+    
+    // Read file content
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        fprintf(stderr, "[DEBUG] Failed to open JSON file: %s\n", filename);
         return;
     }
-
-    xmlNode *root = xmlDocGetRootElement(doc);
+    
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    if (file_size <= 0) {
+        fprintf(stderr, "[DEBUG] Invalid file size\n");
+        fclose(fp);
+        return;
+    }
+    fseek(fp, 0, SEEK_SET);
+    
+    char *file_content = malloc(file_size + 1);
+    if (!file_content) {
+        fprintf(stderr, "[DEBUG] Failed to allocate memory for file content\n");
+        fclose(fp);
+        return;
+    }
+    
+    size_t read_size = fread(file_content, 1, file_size, fp);
+    file_content[read_size] = '\0';
+    fclose(fp);
+    
+    if (read_size != (size_t)file_size) {
+        fprintf(stderr, "[DEBUG] Warning: Read size mismatch (expected: %ld, got: %zu)\n", 
+                file_size, read_size);
+    }
+    
+    // Parse JSON
+    json_object *root = json_tokener_parse(file_content);
+    free(file_content);
+    
     if (!root) {
-        fprintf(stderr, "[DEBUG] No root element in XML file\n");
-        xmlFreeDoc(doc);
-        xmlCleanupParser();
+        fprintf(stderr, "[DEBUG] Failed to parse JSON file - invalid JSON format\n");
         return;
     }
-    printf("[DEBUG] Root element: %s\n", root->name);
-
-    xmlNode *cur_node = NULL;
-
-    for (cur_node = root->children; cur_node; cur_node = cur_node->next) {
-        if (cur_node->type == XML_ELEMENT_NODE) {
-            printf("[DEBUG] Found element: %s\n", cur_node->name);
-        }
-        for (int g = 0; g < num_groups; g++) {
-            if (cur_node->type == XML_ELEMENT_NODE &&
-                xmlStrcmp(cur_node->name, (const xmlChar *)test_groups[g].testcase_name) == 0) {
-                printf("[DEBUG] Found '%s' node\n", test_groups[g].testcase_name);
-                xmlNode *test_node = NULL;
-                for (test_node = cur_node->children; test_node; test_node = test_node->next) {
-                    if (test_node->type == XML_ELEMENT_NODE &&
-                        xmlStrcmp(test_node->name, (const xmlChar *)"testcase") == 0 &&
-                        test_groups[g].count < MAX_TESTS) {
-                        // printf("[DEBUG] Parsing testcase #%d in %s\n", test_groups[g].count + 1, test_groups[g].testcase_name);
-                        parse_testcase(test_node, &test_groups[g].array[test_groups[g].count++]);
-                    }
+    
+    json_object *testcases_obj;
+    if (!json_object_object_get_ex(root, "testcases", &testcases_obj)) {
+        fprintf(stderr, "[DEBUG] No 'testcases' object in JSON file\n");
+        json_object_put(root);
+        return;
+    }
+    
+    printf("[DEBUG] Found 'testcases' root object\n");
+    
+    // Iterate through test groups
+    for (int g = 0; g < num_groups; g++) {
+        json_object *test_group_array;
+        if (json_object_object_get_ex(testcases_obj, test_groups[g].testcase_name, &test_group_array)) {
+            if (!json_object_is_type(test_group_array, json_type_array)) {
+                fprintf(stderr, "[DEBUG] Warning: '%s' is not an array\n", 
+                        test_groups[g].testcase_name);
+                continue;
+            }
+            
+            printf("[DEBUG] Found '%s' with array type\n", test_groups[g].testcase_name);
+            
+            int array_len = json_object_array_length(test_group_array);
+            for (int i = 0; i < array_len && test_groups[g].count < MAX_TESTS; i++) {
+                json_object *testcase_obj = json_object_array_get_idx(test_group_array, i);
+                if (testcase_obj) {
+                    parse_testcase(testcase_obj, &test_groups[g].array[test_groups[g].count++]);
                 }
             }
         }
     }
-
+    
     // Print summary for all groups
     for (int g = 0; g < num_groups; g++) {
-        printf("[DEBUG] Finished parsing XML for %s. Total testcases loaded: %d\n", test_groups[g].testcase_name, test_groups[g].count);
+        printf("[DEBUG] Finished parsing JSON for %s. Total testcases loaded: %d\n", 
+               test_groups[g].testcase_name, test_groups[g].count);
     }
-    xmlFreeDoc(doc);
-    xmlCleanupParser();
+    
+    json_object_put(root);
 }
 
 
@@ -1985,7 +2032,22 @@ void print_testcases(TestGroup *groups, int num_groups) {
 
 void run_testcases(TestCase *tests, int num_tests) {
     for (int i = 0; i < num_tests; i++) {
-        printf("\nExecuting: %s\n", tests[i].description);
+        printf("\nExecuting: %s\n", tests[i].description ? tests[i].description : "(no description)");
+        
+        // Safety check for handler
+        if (!tests[i].handler) {
+            fprintf(stderr, "ERROR: No handler function found for test case\n");
+            log_result(tests[i].description, -1, tests[i].is_negative);
+            continue;
+        }
+        
+        // Safety check for argc/argv consistency
+        if (tests[i].argc > 0 && tests[i].argv[0] == NULL) {
+            fprintf(stderr, "ERROR: argc is %d but argv[0] is NULL\n", tests[i].argc);
+            log_result(tests[i].description, -1, tests[i].is_negative);
+            continue;
+        }
+        
         int result = tests[i].handler(tests[i].argc, tests[i].argv);
         log_result(tests[i].description, result, tests[i].is_negative);
     }
@@ -2030,7 +2092,7 @@ int run_all_tests(int argc, char *argv[]) {
         printf("%s: %s\n", rc == 0 && strstr(output, validations[i].match) ? "PASS" : "FAIL", validations[i].desc);
     }
 
-    parse_xml("/tmp/corenetlib_tests.xml");
+    parse_json("/tmp/corenetlib_tests.json");
     
     for (int g = 0; g < num_groups; g++) {
         if (test_groups[g].count == 0) {
