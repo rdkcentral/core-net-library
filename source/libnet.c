@@ -934,8 +934,22 @@ libnet_status addr_delete(char *args)
         }
 
         link_cache = libnet_link_alloc_cache(sock);
+        if (link_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate link cache\n");
+                goto FREE_SOCKET;
+        }
+
         addr_cache = libnet_addr_alloc_cache(sock);
+        if (addr_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate addr cache\n");
+                goto FREE_LINK_CACHE;
+        }
+
         addr = libnet_addr_alloc();
+        if (addr == NULL) {
+                CNL_LOG_ERROR("Unable to allocate addr\n");
+                goto FREE_ADDR_CACHE;
+        }
 
         token = strtok(str, " ");
         while( token != NULL) {
@@ -994,8 +1008,10 @@ libnet_status addr_delete(char *args)
 
 FREE_ADDR:
         rtnl_addr_put(addr);
-        nl_cache_free(link_cache);
+FREE_ADDR_CACHE:
         nl_cache_free(addr_cache);
+FREE_LINK_CACHE:
+        nl_cache_free(link_cache);
 
 FREE_SOCKET:
         nl_socket_free(sock);
@@ -1035,7 +1051,16 @@ libnet_status route_add(char *args)
         }
 
         link_cache = libnet_link_alloc_cache(sock);
+        if (link_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate link cache\n");
+                goto FREE_SOCKET;
+        }
+
         route = libnet_route_alloc();
+        if (route == NULL) {
+                CNL_LOG_ERROR("Unable to allocate route\n");
+                goto FREE_LINK_CACHE;
+        }
 
         token = strtok(str, " ");
         while( token != NULL) {
@@ -1151,6 +1176,7 @@ libnet_status route_add(char *args)
 
 FREE_ROUTE:
         rtnl_route_put(route);
+FREE_LINK_CACHE:
         nl_cache_free(link_cache);
 
 FREE_SOCKET:
@@ -1201,8 +1227,22 @@ libnet_status route_delete(char *args)
         }
 
         link_cache = libnet_link_alloc_cache(sock);
+        if (link_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate link cache\n");
+                goto FREE_SOCKET;
+        }
+
         route_cache = libnet_route_alloc_cache(sock, 0);
+        if (route_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate route cache\n");
+                goto FREE_LINK_CACHE;
+        }
+
         route = libnet_route_alloc();
+        if (route == NULL) {
+                CNL_LOG_ERROR("Unable to allocate route\n");
+                goto FREE_ROUTE_CACHE;
+        }
 
         token = strtok(str, " ");
         while (token != NULL) {
@@ -1315,9 +1355,11 @@ libnet_status route_delete(char *args)
         nl_cache_foreach_filter(route_cache, OBJ_CAST(route), route_delete_cb, (void *)sock);
         err = CNL_STATUS_SUCCESS;
 FREE_ROUTE:
-        nl_cache_free(link_cache);
-        nl_cache_free(route_cache);
         rtnl_route_put(route);
+FREE_ROUTE_CACHE:
+        nl_cache_free(route_cache);
+FREE_LINK_CACHE:
+        nl_cache_free(link_cache);
 FREE_SOCKET:
         nl_socket_free(sock);
         free(str);
@@ -1526,11 +1568,15 @@ libnet_status rule_delete(char *args)
         }
 
         rule_cache = libnet_rule_alloc_cache(sock);
-        rule = libnet_rule_alloc();
+        if (rule_cache == NULL) {
+                CNL_LOG_ERROR("Unable to allocate rule cache\n");
+                goto FREE_SOCKET;
+        }
 
+        rule = libnet_rule_alloc();
         if (rule == NULL) {
                 CNL_LOG_ERROR("Unable to allocate memory for rule\n");
-                goto FREE_SOCKET;
+                goto FREE_CACHE;
         }
 
         token = strtok(str, " ");
