@@ -126,7 +126,8 @@ struct nl_cache *libnet_link_alloc_cache_family_flags(struct nl_sock *socket,
 
         err = rtnl_link_alloc_cache_flags(socket, family, &cache, flags);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate link cache");
+                fprintf(stderr, "Failed to allocate link cache: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 return NULL;
         }
 
