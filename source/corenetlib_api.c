@@ -7,7 +7,7 @@
 #include <net/if.h>
 #include "libnet.h"
 #include <ctype.h>
-#include <json-c/json.h>
+#include <cjson/cJSON.h>
 
 // Define missing constants if not already defined
 #ifndef CNL_STATUS_NOT_FOUND
@@ -1876,8 +1876,8 @@ TestGroup test_groups[] = {
 };
 int num_groups = sizeof(test_groups) / sizeof(test_groups[0]);
 
-void parse_testcase(json_object *testcase_obj, TestCase *test) {
-    json_object *temp_obj;
+void parse_testcase(cJSON *testcase_obj, TestCase *test) {
+    cJSON *temp_obj;
     
     // Initialize all fields to safe defaults
     test->description = NULL;
@@ -1889,36 +1889,43 @@ void parse_testcase(json_object *testcase_obj, TestCase *test) {
     }
     
     // Parse description
-    if (json_object_object_get_ex(testcase_obj, "description", &temp_obj)) {
-        test->description = strdup(json_object_get_string(temp_obj));
+    temp_obj = cJSON_GetObjectItem(testcase_obj, "description");
+    if (temp_obj && cJSON_IsString(temp_obj)) {
+        test->description = strdup(cJSON_GetStringValue(temp_obj));
     }
     
     // Parse is_negative
-    if (json_object_object_get_ex(testcase_obj, "is_negative", &temp_obj)) {
-        test->is_negative = json_object_get_int(temp_obj);
+    temp_obj = cJSON_GetObjectItem(testcase_obj, "is_negative");
+    if (temp_obj && cJSON_IsNumber(temp_obj)) {
+        test->is_negative = (int)cJSON_GetNumberValue(temp_obj);
     }
     
     // Parse argc
-    if (json_object_object_get_ex(testcase_obj, "argc", &temp_obj)) {
-        test->argc = json_object_get_int(temp_obj);
+    temp_obj = cJSON_GetObjectItem(testcase_obj, "argc");
+    if (temp_obj && cJSON_IsNumber(temp_obj)) {
+        test->argc = (int)cJSON_GetNumberValue(temp_obj);
     }
     
     // Parse argv array
-    if (json_object_object_get_ex(testcase_obj, "argv", &temp_obj)) {
-        int array_len = json_object_array_length(temp_obj);
+    temp_obj = cJSON_GetObjectItem(testcase_obj, "argv");
+    if (temp_obj && cJSON_IsArray(temp_obj)) {
+        int array_len = cJSON_GetArraySize(temp_obj);
         for (int i = 0; i < array_len && i < MAX_ARGS; i++) {
-            json_object *arg_obj = json_object_array_get_idx(temp_obj, i);
-            if (json_object_get_type(arg_obj) == json_type_null) {
+            cJSON *arg_obj = cJSON_GetArrayItem(temp_obj, i);
+            if (cJSON_IsNull(arg_obj)) {
                 test->argv[i] = NULL;
+            } else if (cJSON_IsString(arg_obj)) {
+                test->argv[i] = strdup(cJSON_GetStringValue(arg_obj));
             } else {
-                test->argv[i] = strdup(json_object_get_string(arg_obj));
+                test->argv[i] = NULL;
             }
         }
     }
     
     // Parse handler
-    if (json_object_object_get_ex(testcase_obj, "handler", &temp_obj)) {
-        const char *handler_name = json_object_get_string(temp_obj);
+    temp_obj = cJSON_GetObjectItem(testcase_obj, "handler");
+    if (temp_obj && cJSON_IsString(temp_obj)) {
+        const char *handler_name = cJSON_GetStringValue(temp_obj);
         test->handler = get_handler_by_name(handler_name);
     }
 }
@@ -1959,18 +1966,23 @@ void parse_json(const char *filename) {
     }
     
     // Parse JSON
-    json_object *root = json_tokener_parse(file_content);
+    cJSON *root = cJSON_Parse(file_content);
     free(file_content);
     
     if (!root) {
-        fprintf(stderr, "[DEBUG] Failed to parse JSON file - invalid JSON format\n");
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL) {
+            fprintf(stderr, "[DEBUG] Failed to parse JSON: %s\n", error_ptr);
+        } else {
+            fprintf(stderr, "[DEBUG] Failed to parse JSON file - invalid JSON format\n");
+        }
         return;
     }
     
-    json_object *testcases_obj;
-    if (!json_object_object_get_ex(root, "testcases", &testcases_obj)) {
+    cJSON *testcases_obj = cJSON_GetObjectItem(root, "testcases");
+    if (!testcases_obj) {
         fprintf(stderr, "[DEBUG] No 'testcases' object in JSON file\n");
-        json_object_put(root);
+        cJSON_Delete(root);
         return;
     }
     
@@ -1978,9 +1990,9 @@ void parse_json(const char *filename) {
     
     // Iterate through test groups
     for (int g = 0; g < num_groups; g++) {
-        json_object *test_group_array;
-        if (json_object_object_get_ex(testcases_obj, test_groups[g].testcase_name, &test_group_array)) {
-            if (!json_object_is_type(test_group_array, json_type_array)) {
+        cJSON *test_group_array = cJSON_GetObjectItem(testcases_obj, test_groups[g].testcase_name);
+        if (test_group_array) {
+            if (!cJSON_IsArray(test_group_array)) {
                 fprintf(stderr, "[DEBUG] Warning: '%s' is not an array\n", 
                         test_groups[g].testcase_name);
                 continue;
@@ -1988,9 +2000,9 @@ void parse_json(const char *filename) {
             
             printf("[DEBUG] Found '%s' with array type\n", test_groups[g].testcase_name);
             
-            int array_len = json_object_array_length(test_group_array);
+            int array_len = cJSON_GetArraySize(test_group_array);
             for (int i = 0; i < array_len && test_groups[g].count < MAX_TESTS; i++) {
-                json_object *testcase_obj = json_object_array_get_idx(test_group_array, i);
+                cJSON *testcase_obj = cJSON_GetArrayItem(test_group_array, i);
                 if (testcase_obj) {
                     parse_testcase(testcase_obj, &test_groups[g].array[test_groups[g].count++]);
                 }
@@ -2004,7 +2016,7 @@ void parse_json(const char *filename) {
                test_groups[g].testcase_name, test_groups[g].count);
     }
     
-    json_object_put(root);
+    cJSON_Delete(root);
 }
 
 
