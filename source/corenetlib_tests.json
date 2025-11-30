@@ -1,0 +1,1639 @@
+{
+  "testcases": {
+    "addr_tests": [
+      {
+        "description": "Add and verify address",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.13/24"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add invalid address",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 invalid_ip"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add address with negative prefix",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.13/-1"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add address with non-numeric prefix",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.13/abc"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add with valid valid_lft and preferred_lft",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.15/24 valid_lft forever preferred_lft forever"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add with invalid valid_lft",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.15/24 valid_lft abc preferred_lft 567"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add with invalid preferred_lft",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 10.14.1.16/24 valid_lft 1234 preferred_lft xyz"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "NULL address in addr_add",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          null
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add and verify IPv6 address",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::1/64"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add invalid IPv6 address",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::zzzz/64"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add IPv6 address with negative prefix",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::1/-1"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add IPv6 address with non-numeric prefix",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::1/abc"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add IPv6 with valid valid_lft and preferred_lft",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::2/64 valid_lft forever preferred_lft forever"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add IPv6 with invalid valid_lft",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::2/64 valid_lft abc preferred_lft 567"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "Add IPv6 with invalid preferred_lft",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          "dev brlan18 2001:db8::3/64 valid_lft 1234 preferred_lft xyz"
+        ],
+        "handler": "handle_addr_add"
+      },
+      {
+        "description": "NULL IPv6 address in addr_add",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_add",
+          null
+        ],
+        "handler": "handle_addr_add"
+      }
+    ],
+    "addr_delete_tests": [
+      {
+        "description": "Delete and verify address",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 10.14.1.13/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete non-existent address",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 192.168.1.1/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with invalid IP format",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 10.14.1.999/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with negative prefix length",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 10.14.1.13/-1"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with non-numeric prefix length",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 10.14.1.13/abc"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with missing arguments",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with invalid dev keyword",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "brlan18 10.14.1.13/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with overly long interface name",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev verylonginterfacename 10.14.1.13/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with invalid characters in IP",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 10.14.1.ab/24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with empty IP address",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 /24"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "Delete address with IPv6 address in IPv4 context",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          "dev brlan18 2001:db8::1/64"
+        ],
+        "handler": "handle_addr_delete"
+      },
+      {
+        "description": "NULL address in addr_delete",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "addr_delete",
+          null
+        ],
+        "handler": "handle_addr_delete"
+      }
+    ],
+    "interface_up_tests": [
+      {
+        "description": "Bring up and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "brlan18"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "Bring up non-existent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "nonexistent"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "Bring up interface with numeric name",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "123344"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "NULL interface in interface_up",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          null
+        ],
+        "handler": "handle_interface_up"
+      }
+    ],
+    "interface_down_tests": [
+      {
+        "description": "Bring down and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_down",
+          "brlan18"
+        ],
+        "handler": "handle_interface_down"
+      },
+      {
+        "description": "NULL interface in interface_down",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_down",
+          null
+        ],
+        "handler": "handle_interface_down"
+      }
+    ],
+    "vlan_tests": [
+      {
+        "description": "Bring up and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "brlan18"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "Create and verify VLAN",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan18",
+          "110"
+        ],
+        "handler": "handle_vlan_create"
+      },
+      {
+        "description": "Create VLAN with invalid ID",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan18",
+          "5000"
+        ],
+        "handler": "handle_vlan_create"
+      },
+      {
+        "description": "Create VLAN with negative ID",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan18",
+          "-10"
+        ],
+        "handler": "handle_vlan_create"
+      },
+      {
+        "description": "Delete and verify VLAN",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "vlan_delete",
+          "brlan18.110"
+        ],
+        "handler": "handle_vlan_delete"
+      },
+      {
+        "description": "Delete non-existent VLAN",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "vlan_delete",
+          "brlan18.999"
+        ],
+        "handler": "handle_vlan_delete"
+      },
+      {
+        "description": "NULL VLAN ID",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan18",
+          null
+        ],
+        "handler": "handle_vlan_create"
+      }
+    ],
+    "mtu_tests": [
+      {
+        "description": "Set and verify MTU",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          "1400"
+        ],
+        "handler": "handle_interface_set_mtu"
+      },
+      {
+        "description": "Set invalid MTU",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          "99999"
+        ],
+        "handler": "handle_interface_set_mtu"
+      },
+      {
+        "description": "Set MTU with negative value",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          "-1500"
+        ],
+        "handler": "handle_interface_set_mtu"
+      },
+      {
+        "description": "Set MTU with string value",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          "invalid_mtu"
+        ],
+        "handler": "handle_interface_set_mtu"
+      },
+      {
+        "description": "Set MTU with zero value",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          "0"
+        ],
+        "handler": "handle_interface_set_mtu"
+      },
+      {
+        "description": "NULL MTU value",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mtu",
+          "brlan18",
+          null
+        ],
+        "handler": "handle_interface_set_mtu"
+      }
+    ],
+    "rule_tests": [
+      {
+        "description": "Add and verify rule with 'from' and 'lookup'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 172.16.12.2 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with 'to'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "to 192.168.100.1 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with 'iif'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "iif brlan1 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with 'oif'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "oif brlan1 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with 'table'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 10.10.10.10 table 100"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with '-4' (IPv4)",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "-4 from 172.16.12.2 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add and verify rule with '-6' (IPv6)",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "-6 from 2001:db8::1 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "NULL rule argument",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          null
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with missing 'from' value",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with missing 'lookup' value",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 10.0.0.1 lookup"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with unknown table",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 10.0.0.1 lookup no_such_table"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with malformed IP",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 999.999.999.999 lookup 15"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with missing oif name",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          "from 10.0.0.1 oif"
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Add rule with empty args",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_add",
+          ""
+        ],
+        "handler": "handle_rule_add"
+      },
+      {
+        "description": "Delete and verify rule with 'from' and 'lookup'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_delete",
+          "from 172.16.12.2 lookup 15"
+        ],
+        "handler": "handle_rule_delete"
+      },
+      {
+        "description": "Delete and verify rule with 'iif' and 'table'",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_delete",
+          "iif brlan0 table erouter"
+        ],
+        "handler": "handle_rule_delete"
+      },
+      {
+        "description": "Delete non-existent rule (invalid IP and table)",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_delete",
+          "from 192.168.99.99 lookup 999"
+        ],
+        "handler": "handle_rule_delete"
+      },
+      {
+        "description": "NULL rule argument",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "rule_delete",
+          null
+        ],
+        "handler": "handle_rule_delete"
+      }
+    ],
+    "route_tests": [
+      {
+        "description": "Bring up and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "brlan18"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "Add and verify route",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "dev brlan18 192.168.18.0/24"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with via",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.19.0/24 dev brlan18 via 192.168.18.1"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with src",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.20.0/24 dev brlan18 src 192.168.18.1"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with metric",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.21.0/24 dev brlan18 metric 5"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with mtu",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.22.0/24 dev brlan18 mtu 1400"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with proto",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.24.0/24 dev brlan18 proto static"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add route with scope",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "192.168.25.0/24 dev brlan18 scope link"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Add invalid route",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          "invalid_route"
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "NULL route argument",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_add",
+          null
+        ],
+        "handler": "handle_route_add"
+      },
+      {
+        "description": "Delete route",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "dev brlan18 192.168.18.0/24"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with via",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.19.0/24 dev brlan18 via 192.168.18.1"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with src",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.20.0/24 dev brlan18 src 192.168.18.1"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with metric",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.21.0/24 dev brlan18 metric 5"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with mtu",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.22.0/24 dev brlan18 mtu 1400"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with table",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.23.0/24 dev brlan18 table 100"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with proto",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.24.0/24 dev brlan18 proto static"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with scope",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.25.0/24 dev brlan18 scope link"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete route with type",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "192.168.26.0/24 dev brlan18 type unicast"
+        ],
+        "handler": "handle_route_delete"
+      },
+      {
+        "description": "Delete non-existent route",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "route_delete",
+          "dev brlan18 192.168.99.0/24"
+        ],
+        "handler": "handle_route_delete"
+      }
+    ],
+    "bridge_tests": [
+      {
+        "description": "Create and verify bridge",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_create",
+          "brlan303"
+        ],
+        "handler": "handle_bridge_create"
+      },
+      {
+        "description": "Delete and verify bridge",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_delete",
+          "brlan303"
+        ],
+        "handler": "handle_bridge_delete"
+      },
+      {
+        "description": "Delete non-existent bridge",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_delete",
+          "nonexistent"
+        ],
+        "handler": "handle_bridge_delete"
+      },
+      {
+        "description": "Add and verify bridge free info",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_free_info",
+          "brlan18"
+        ],
+        "handler": "handle_bridge_free_info"
+      },
+      {
+        "description": "Free info for non-existent bridge",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_free_info",
+          "nonexistent"
+        ],
+        "handler": "handle_bridge_free_info"
+      },
+      {
+        "description": "Get and verify bridge info",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_get_info",
+          "brlan18"
+        ],
+        "handler": "handle_bridge_get_info"
+      },
+      {
+        "description": "Get info for non-existent bridge",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_get_info",
+          "nonexistent"
+        ],
+        "handler": "handle_bridge_get_info"
+      }
+    ],
+    "ip_mac_tests": [
+      {
+        "description": "Get and validate interface IP",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_get_ip",
+          "brlan18"
+        ],
+        "handler": "handle_interface_get_ip"
+      },
+      {
+        "description": "Get IP for non-existent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_get_ip",
+          "nonexistent"
+        ],
+        "handler": "handle_interface_get_ip"
+      },
+      {
+        "description": "Get and validate interface MAC",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_get_mac",
+          "brlan18"
+        ],
+        "handler": "handle_interface_get_mac"
+      },
+      {
+        "description": "Get MAC for non-existent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_get_mac",
+          "nonexistent"
+        ],
+        "handler": "handle_interface_get_mac"
+      }
+    ],
+    "netmask_stp_tests": [
+      {
+        "description": "Set and validate interface netmask",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_netmask",
+          "brlan18",
+          "255.255.0.0"
+        ],
+        "handler": "handle_interface_set_netmask"
+      },
+      {
+        "description": "Set netmask for non-existent interface",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_netmask",
+          "nonexistent",
+          "255.255.255.0"
+        ],
+        "handler": "handle_interface_set_netmask"
+      },
+      {
+        "description": "Set and validate bridge STP ON",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "bridge_set_stp",
+          "brlan18",
+          "on"
+        ],
+        "handler": "handle_bridge_set_stp"
+      },
+      {
+        "description": "NULL bridge interface for bridge_set_stp",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "bridge_set_stp",
+          null,
+          "on"
+        ],
+        "handler": "handle_bridge_set_stp"
+      }
+    ],
+    "stp_status_tests": [
+      {
+        "description": "Set and validate bridge STP OFF",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "bridge_set_stp",
+          "brlan18",
+          "off"
+        ],
+        "handler": "handle_bridge_set_stp"
+      },
+      {
+        "description": "Set STP for non-existent bridge",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "bridge_set_stp",
+          "nonexistent",
+          "on"
+        ],
+        "handler": "handle_bridge_set_stp"
+      },
+      {
+        "description": "Get and validate interface status (UP)",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_status",
+          "brlan18"
+        ],
+        "handler": "handle_interface_status"
+      },
+      {
+        "description": "Get status for non-existent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_status",
+          "nonexistent"
+        ],
+        "handler": "handle_interface_status"
+      },
+      {
+        "description": "interface_exist for present interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_exist",
+          "brlan18"
+        ],
+        "handler": "handle_interface_exist"
+      },
+      {
+        "description": "interface_exist for absent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_exist",
+          "brlan200"
+        ],
+        "handler": "handle_interface_exist"
+      }
+    ],
+    "rename_delete_mac_tests": [
+      {
+        "description": "Create and verify bridge",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_create",
+          "brlan999"
+        ],
+        "handler": "handle_bridge_create"
+      },
+      {
+        "description": "vlan_create brlan999 180",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan999",
+          "180"
+        ],
+        "handler": "handle_vlan_create"
+      },
+      {
+        "description": "interface_rename brlan999.180 brlan220",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_rename",
+          "brlan999.180",
+          "brlan220"
+        ],
+        "handler": "handle_interface_rename"
+      },
+      {
+        "description": "interface_delete brlan220",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_delete",
+          "brlan220"
+        ],
+        "handler": "handle_interface_delete"
+      },
+      {
+        "description": "Delete and verify bridge",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_delete",
+          "brlan999"
+        ],
+        "handler": "handle_bridge_delete"
+      },
+      {
+        "description": "interface_delete for non-existent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_delete",
+          "brlan220"
+        ],
+        "handler": "handle_interface_delete"
+      },
+      {
+        "description": "interface_set_mac brlan18 22:7C:EA:99:9F:61",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mac",
+          "brlan18",
+          "22:7C:EA:99:9F:61"
+        ],
+        "handler": "handle_interface_set_mac"
+      },
+      {
+        "description": "interface_set_mac nonexistent 22:7C:EA:99:9F:99",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mac",
+          "nonexistent",
+          "22:7C:EA:99:9F:99"
+        ],
+        "handler": "handle_interface_set_mac"
+      },
+      {
+        "description": "NULL interface name for interface_set_mac",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_mac",
+          null,
+          "22:7C:EA:99:9F:61"
+        ],
+        "handler": "handle_interface_set_mac"
+      }
+    ],
+    "addr_derive_broadcast_tests": [
+      {
+        "description": "addr_derive_broadcast 10.1.1.1 24",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "10.1.1.1",
+          "24"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 192.168.0.1 16",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "192.168.0.1",
+          "16"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 172.16.5.10 20",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "172.16.5.10",
+          "20"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 0.0.0.0 0",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "0.0.0.0",
+          "0"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 255.255.255.255 32",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "255.255.255.255",
+          "32"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 999.999.999.999 24",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "999.999.999.999",
+          "24"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast abc.def.ghi.jkl 24",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "abc.def.ghi.jkl",
+          "24"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast (empty ip) 24",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "",
+          "24"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 10.1.1.1 33",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "10.1.1.1",
+          "33"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 10.1.1.1 -1",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "10.1.1.1",
+          "-1"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "addr_derive_broadcast 10.1.1.1 abc",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          "10.1.1.1",
+          "abc"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      },
+      {
+        "description": "NULL IP for derive broadcast",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "addr_derive_broadcast",
+          null,
+          "24"
+        ],
+        "handler": "handle_addr_derive_broadcast"
+      }
+    ],
+    "interface_set_flags_tests": [
+      {
+        "description": "interface_set_flags UP only",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_flags",
+          "brlan18",
+          "1"
+        ],
+        "handler": "handle_interface_set_flags"
+      },
+      {
+        "description": "interface_set_flags on non-existent interface",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_flags",
+          "fakeif0",
+          "1"
+        ],
+        "handler": "handle_interface_set_flags"
+      },
+      {
+        "description": "interface_set_flags with non-numeric flag",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_flags",
+          "brlan18",
+          "abc"
+        ],
+        "handler": "handle_interface_set_flags"
+      },
+      {
+        "description": "interface_set_flags with LOOPBACK flag on brlan18",
+        "is_negative": 1,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_set_flags",
+          "brlan18",
+          "8"
+        ],
+        "handler": "handle_interface_set_flags"
+      }
+    ],
+    "get_ipv6_address_tests": [
+      {
+        "description": "Bring up and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "erouter0"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "get_ipv6_address for absent interface",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "get_ipv6_address",
+          "nonexistent"
+        ],
+        "handler": "handle_get_ipv6_address"
+      },
+      {
+        "description": "get_ipv6_address with empty argument",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "get_ipv6_address",
+          ""
+        ],
+        "handler": "handle_get_ipv6_address"
+      },
+      {
+        "description": "get_ipv6_address with NULL argument",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "get_ipv6_address",
+          null
+        ],
+        "handler": "handle_get_ipv6_address"
+      },
+      {
+        "description": "get_ipv6_address on interface with no IPv6",
+        "is_negative": 1,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "get_ipv6_address",
+          "lo"
+        ],
+        "handler": "handle_get_ipv6_address"
+      }
+    ],
+    "bridge_interface_tests": [
+      {
+        "description": "Create and verify bridge",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_create",
+          "brlan333"
+        ],
+        "handler": "handle_bridge_create"
+      },
+      {
+        "description": "Bring up and verify interface",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_up",
+          "brlan333"
+        ],
+        "handler": "handle_interface_up"
+      },
+      {
+        "description": "vlan_create brlan333 110",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "vlan_create",
+          "brlan333",
+          "110"
+        ],
+        "handler": "handle_vlan_create"
+      },
+      {
+        "description": "bridge_create brlan999",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "bridge_create",
+          "brlan999"
+        ],
+        "handler": "handle_bridge_create"
+      },
+      {
+        "description": "interface_add_to_bridge brlan999 brlan333.110",
+        "is_negative": 0,
+        "argc": 4,
+        "argv": [
+          "corenetlib_api",
+          "interface_add_to_bridge",
+          "brlan999",
+          "brlan333.110"
+        ],
+        "handler": "handle_interface_add_to_bridge"
+      },
+      {
+        "description": "interface_remove_from_bridge brlan333.110",
+        "is_negative": 0,
+        "argc": 3,
+        "argv": [
+          "corenetlib_api",
+          "interface_remove_from_bridge",
+          "brlan333.110"
+        ],
+        "handler": "handle_interface_remove_from_bridge"
+      }
+    ]
+  }
+}
