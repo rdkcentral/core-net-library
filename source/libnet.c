@@ -332,20 +332,20 @@ libnet_status interface_add_to_bridge(const char* bridge_name, const char* if_na
 
         int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache);
         if (ret < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
-                        nl_geterror(ret), ret);
+                CNL_LOG_ERROR("Unable to allocate cache for bridge operation (bridge=%s, interface=%s): %s (err=%d)\n",
+                        bridge_name, if_name, nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
         link = rtnl_link_get_by_name(link_cache, bridge_name);
         if (!link) {
-                CNL_LOG_ERROR("Unable to find the bridge %s)\n", bridge_name);
+                CNL_LOG_ERROR("Unable to find the bridge '%s'\n", bridge_name);
                 goto FREE_CACHE;
         }
 
         ltap = rtnl_link_get_by_name(link_cache, if_name);
         if (!ltap) {
-                CNL_LOG_ERROR("Unable to find the interface %s\n", if_name);
+                CNL_LOG_ERROR("Unable to find the interface '%s'\n", if_name);
                 goto FREE_LINK;
         }
 
@@ -394,14 +394,14 @@ libnet_status interface_remove_from_bridge (const char *if_name)
 
         int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache);
         if (ret < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
-                        nl_geterror(ret), ret);
+                CNL_LOG_ERROR("Unable to allocate cache for interface '%s': %s (err=%d)\n",
+                        if_name, nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
         ltap = rtnl_link_get_by_name(link_cache, if_name);
         if (!ltap) {
-                CNL_LOG_ERROR("Unable to find the interface %s\n", if_name);
+                CNL_LOG_ERROR("Unable to find the interface '%s'\n", if_name);
                 goto FREE_CACHE;
         }
 
@@ -450,7 +450,7 @@ libnet_status bridge_set_stp(const char *bridge_name, char *val)
         if ((off == 0 && on == 0) ||
             (off == 1 && on == 1))
         {
-                CNL_LOG_ERROR("func %s: val must be on or off\n", __func__);
+                CNL_LOG_ERROR("val must be on or off\n");
                 return CNL_STATUS_FAILURE;
         }
 
@@ -475,8 +475,8 @@ libnet_status bridge_set_stp(const char *bridge_name, char *val)
 
         if (-1 == access(file_name, F_OK | W_OK))
         {
-                CNL_LOG_ERROR("func %s: file_name %s does not exist or is not writeable\n",
-                              __func__, file_name);
+                CNL_LOG_ERROR("file_name %s does not exist or is not writeable\n",
+                              file_name);
                 return CNL_STATUS_FAILURE;
         }
 
@@ -517,7 +517,7 @@ libnet_status interface_up(char *if_name)
         }
 
         if (!(link = rtnl_link_get_by_name(cache, if_name))) {
-                CNL_LOG_ERROR("Interface not found\n");
+                CNL_LOG_ERROR("Interface '%s' not found\n", if_name);
                 goto FREE_CACHE;
         }
 
@@ -579,13 +579,13 @@ libnet_status interface_down(char *if_name)
 
         int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
         if (ret < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
-                        nl_geterror(ret), ret);
+                CNL_LOG_ERROR("Unable to allocate cache for interface '%s': %s (err=%d)\n",
+                        if_name, nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
         if (!(link = rtnl_link_get_by_name(cache, if_name))) {
-                CNL_LOG_ERROR("Interface not found\n");
+                CNL_LOG_ERROR("Interface '%s' not found\n", if_name);
                 goto FREE_CACHE;
         }
 
@@ -710,8 +710,7 @@ libnet_status interface_set_mac(const char *if_name, char *mac)
 
         if (ret != 6 || strlen(mac) != 17)
         {
-                CNL_LOG_ERROR("%s: Input MAC Address must be of format: ab:cd:ef:gh:ij:kl\n",
-                              __func__);
+                CNL_LOG_ERROR("Input MAC Address must be of format: ab:cd:ef:gh:ij:kl\n");
                 return CNL_STATUS_FAILURE;
         }
 
@@ -719,7 +718,7 @@ libnet_status interface_set_mac(const char *if_name, char *mac)
 
         if (sock < 0)
         {
-                CNL_LOG_ERROR("%s: Error creating socket\n", __func__);
+                CNL_LOG_ERROR("Error creating socket\n");
                 return CNL_STATUS_FAILURE;
         }
 
@@ -728,7 +727,7 @@ libnet_status interface_set_mac(const char *if_name, char *mac)
 
         if(ioctl(sock, SIOCSIFHWADDR, &if_req) < 0)
         {
-                CNL_LOG_ERROR("%s: failed to set MAC Address\n", __func__);
+                CNL_LOG_ERROR("Failed to set MAC Address\n");
                 close(sock);
                 return CNL_STATUS_FAILURE;
         }
@@ -749,14 +748,14 @@ char* interface_get_ip(const char* if_name)
         int sock;
 
         if ((sock = socket(AF_INET, SOCK_DGRAM, 0) ) < 0) {
-                CNL_LOG_ERROR("socket error %s \n", strerror(errno));
+                CNL_LOG_ERROR("Socket error: %s\n", strerror(errno));
                 return NULL;
         }
         if_req.ifr_addr.sa_family = AF_INET;
         strncpy(if_req.ifr_name, if_name, IFNAMSIZ-1);
         if ( ioctl(sock, SIOCGIFADDR, &if_req)  < 0 )
         {
-                CNL_LOG_ERROR("Failed to get %s IP Address \n",if_name);
+                CNL_LOG_ERROR("Failed to get %s IP Address\n", if_name);
                 close(sock);
                 return NULL;
         }
@@ -790,7 +789,7 @@ libnet_status interface_set_netmask(const char* if_name, const char *netmask)
         memcpy(&if_req.ifr_netmask, &sin, sizeof(struct sockaddr));
 
         if (ioctl(sock, SIOCSIFNETMASK, &if_req) < 0) {
-                CNL_LOG_ERROR("Failed to set %s netmask address \n",if_name );
+                CNL_LOG_ERROR("Failed to set %s netmask address\n", if_name);
                 close(sock);
                 return CNL_STATUS_FAILURE;
         }
@@ -830,6 +829,8 @@ libnet_status addr_add(char *args)
         struct rtnl_addr *addr;
         struct nl_cache *link_cache;
         libnet_status err = CNL_STATUS_FAILURE;
+
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
 
         char *str = strdup(args);
         char *token;
@@ -945,6 +946,8 @@ static void addr_delete_cb(struct nl_object *obj, void *arg)
  */
 libnet_status addr_delete(char *args)
 {
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
+
         char *str = strdup(args);
         char *token;
         int family = AF_UNSPEC;
@@ -1068,6 +1071,8 @@ libnet_status route_add(char *args)
         struct rtnl_route *route;
         struct nl_cache *link_cache;
         libnet_status err = CNL_STATUS_FAILURE;
+
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
 
         char *str = strdup(args);
         char *token;
@@ -1247,6 +1252,8 @@ static void route_delete_cb(struct nl_object *obj, void *arg)
  */
 libnet_status route_delete(char *args)
 {
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
+
         static struct nl_sock *sock;
         struct nl_cache *link_cache;
         struct nl_cache *route_cache;
@@ -1423,6 +1430,8 @@ FREE_SOCKET:
  */
 libnet_status rule_add(char *args)
 {
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
+
         char *str = strdup(args);
         char *token;
 
@@ -1605,9 +1614,12 @@ static void rule_delete_cb(struct nl_object *obj, void *arg)
  */
 libnet_status rule_delete(char *args)
 {
+        CNL_LOG_INFO("Entering with args: '%s'\n", args);
+
         char *str = strdup(args);
         char *token;
         int family = AF_UNSPEC;
+        int ret = 0;
 
         static struct nl_sock *sock;
         struct nl_cache *rule_cache;
@@ -1649,7 +1661,12 @@ libnet_status rule_delete(char *args)
                                         CNL_LOG_ERROR("Unable to parse rule src addr\n");
                                         goto FREE_RULE;
                                 }
-                                rtnl_rule_set_src(rule, src);
+                                ret = rtnl_rule_set_src(rule, src);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule src: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
+                                        goto FREE_RULE;
+                                }
                         }
                 } else if (0 == strcmp(token, "to")) {
                         token = strtok(NULL, " ");
@@ -1666,12 +1683,22 @@ libnet_status rule_delete(char *args)
                 } else if(0 == strcmp(token, "iif")) {
                         token = strtok(NULL, " ");
                         if (token != NULL) {
-                                rtnl_rule_set_iif(rule, token);
+                                ret = rtnl_rule_set_iif(rule, token);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule iif: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
+                                        goto FREE_RULE;
+                                }
                         }
                 } else if(0 == strcmp(token, "oif")) {
                         token = strtok(NULL, " ");
                         if (token != NULL) {
-                                rtnl_rule_set_oif(rule, token);
+                                ret = rtnl_rule_set_oif(rule, token);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule oif: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
+                                        goto FREE_RULE;
+                                }
                         }
                 } else if(0 == strcmp(token, "lookup") ||
                           0 == strcmp(token, "table")) {
