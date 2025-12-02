@@ -36,7 +36,8 @@ int libnet_connect(struct nl_sock *socket, int proto)
 
         err = nl_connect(socket, proto);
         if (err < 0) {
-                fprintf(stderr, "Failed to connect netlink socket");
+                fprintf(stderr, "Failed to connect netlink socket: %s (err=%d)\n",
+                        nl_geterror(err), err);
         }
 
         return err;
@@ -61,7 +62,8 @@ int libnet_addr_parse(const char *str, int family, struct nl_addr **addr)
 
         err = nl_addr_parse(str, family, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to parse address");
+                fprintf(stderr, "Failed to parse address '%s': %s (err=%d)\n",
+                        str, nl_geterror(err), err);
                 return err;
         }
 
@@ -177,7 +179,8 @@ int libnet_addr_parse_local(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_local(address, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set local address");
+                fprintf(stderr, "Failed to set local address: %s (err=%d)\n",
+                        nl_geterror(err), err);
         }
 
 FREE_ADDR:
@@ -212,7 +215,8 @@ int libnet_addr_parse_label(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_label(address, args);
         if (err < 0) {
-                fprintf(stderr, "Failed to set address label");
+                fprintf(stderr, "Failed to set address label: %s (err=%d)\n",
+                        nl_geterror(err), err);
         }
 
         return err;
@@ -230,7 +234,8 @@ int libnet_addr_parse_peer(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_peer(address, nl_a);
         if (err < 0)
-                fprintf(stderr, "Failed to set peer address");
+                fprintf(stderr, "Failed to set peer address: %s (err=%d)\n",
+                        nl_geterror(err), err);
 
 FREE_ADDR:
         nl_addr_put(nl_a);
@@ -249,7 +254,8 @@ int libnet_addr_parse_broadcast(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_broadcast(address, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set broadcast address");
+                fprintf(stderr, "Failed to set broadcast address: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -267,7 +273,8 @@ static uint32_t parse_lifetime(const char *args, int *err)
 
         *err = nl_str2msec(args, &msecs);
         if (*err < 0) {
-                fprintf(stderr, "Failed to parse time string");
+                fprintf(stderr, "Failed to parse time string '%s': %s (err=%d)\n",
+                        args, nl_geterror(*err), *err);
                 return 0;
         }
 
@@ -323,7 +330,8 @@ struct nl_cache *libnet_route_alloc_cache(struct nl_sock *socket, int flags)
 
         err = rtnl_route_alloc_cache(socket, AF_UNSPEC, flags, &cache);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate route cache");
+                fprintf(stderr, "Failed to allocate route cache: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 return NULL;
         }
 
@@ -342,7 +350,8 @@ int libnet_route_parse_dst(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_dst(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set destination address");
+                fprintf(stderr, "Failed to set destination address: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -363,7 +372,8 @@ int libnet_route_parse_src(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_src(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set source address");
+                fprintf(stderr, "Failed to set source address: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -384,7 +394,8 @@ int libnet_route_parse_pref_src(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_pref_src(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set preferred source address");
+                fprintf(stderr, "Failed to set preferred source address: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -577,7 +588,8 @@ int libnet_route_parse_scope(struct rtnl_route *route, char *arg)
         int ival;
 
         if ((ival = rtnl_str2scope(arg)) < 0) {
-                fprintf(stderr, "Unknown routing scope \"%s\"", arg);
+                fprintf(stderr, "Unknown routing scope \"%s\": %s (err=%d)\n",
+                        arg, nl_geterror(ival), ival);
                 return -1;
         }
         rtnl_route_set_scope(route, ival);
@@ -611,10 +623,12 @@ int libnet_route_parse_type(struct rtnl_route *route, char *arg)
         int ival;
 
         if ((ival = nl_str2rtntype(arg)) < 0)
-                fprintf(stderr, "Unknown routing type \"%s\"", arg);
+                fprintf(stderr, "Unknown routing type \"%s\": %s (err=%d)\n",
+                        arg, nl_geterror(ival), ival);
 
         if ((ival = rtnl_route_set_type(route, ival)) < 0)
-                fprintf(stderr, "Unable to set routing type: %d", ival);
+                fprintf(stderr, "Unable to set routing type: %s (err=%d)\n",
+                        nl_geterror(ival), ival);
         return ival;
 }
 
@@ -640,7 +654,8 @@ struct nl_cache *libnet_rule_alloc_cache(struct nl_sock *socket)
 
         err = rtnl_rule_alloc_cache(socket, AF_UNSPEC, &cache);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate routing rule cache");
+                fprintf(stderr, "Failed to allocate routing rule cache: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 return NULL;
         }
 
@@ -669,7 +684,8 @@ int libnet_neigh_parse_dst(struct rtnl_neigh *rt_neigh, char *args)
                 return err;
         err = rtnl_neigh_set_dst(rt_neigh, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set local address");
+                fprintf(stderr, "Failed to set local address: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 FREE_ADDR:

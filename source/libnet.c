@@ -102,6 +102,7 @@ libnet_status vlan_create(const char *if_name, int vid)
         struct nl_cache *link_cache;
         struct nl_sock *sk;
         int master_index;
+        int ret;
         libnet_status err = CNL_STATUS_FAILURE;
         char vlan_if_name[32] = {0};
         errno_t rc;
@@ -127,8 +128,9 @@ libnet_status vlan_create(const char *if_name, int vid)
                 goto FREE_SOCKET;
         }
 
-        if (!(master_index = rtnl_link_name2i(link_cache, if_name))) {
-                CNL_LOG_ERROR("Unable to lookup %s", if_name);
+        master_index = rtnl_link_name2i(link_cache, if_name);
+        if (!master_index) {
+                CNL_LOG_ERROR("Unable to lookup %s (not found)\n", if_name);
                 goto FREE_CACHE;
         }
 
@@ -139,13 +141,17 @@ libnet_status vlan_create(const char *if_name, int vid)
         rtnl_link_set_link(link, master_index);
         rtnl_link_set_name(link, vlan_if_name);
 
-        if (rtnl_link_vlan_set_id(link, vid) < 0) {
-                CNL_LOG_ERROR("Unable to set vlan id\n");
+        ret = rtnl_link_vlan_set_id(link, vid);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set vlan id %d for %s: %s (err=%d, errno=%d: %s)\n",
+                        vid, vlan_if_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_VLAN;
         }
 
-        if (rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL ) < 0) {
-                CNL_LOG_ERROR("Unable to add link\n");
+        ret = rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to add vlan link %s: %s (err=%d, errno=%d: %s)\n",
+                        vlan_if_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_VLAN;
         }
         err = CNL_STATUS_SUCCESS;
@@ -188,8 +194,10 @@ libnet_status vlan_delete(const char *vlan_name)
         }
         rtnl_link_set_name(link, vlan_name);
 
-        if (rtnl_link_delete(sk, link) < 0) {
-                CNL_LOG_ERROR("Unable to delete vlan\n");
+        int ret = rtnl_link_delete(sk, link);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to delete vlan %s: %s (err=%d, errno=%d: %s)\n",
+                        vlan_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -228,14 +236,18 @@ libnet_status bridge_create(const char* bridge_name)
                 CNL_LOG_ERROR("Unable to allocate memory for link\n");
                 goto FREE_SOCKET;
         }
-        if (rtnl_link_set_type(link, "bridge") < 0) {
-                CNL_LOG_ERROR("Unable to set link type\n");
+        int ret = rtnl_link_set_type(link, "bridge");
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set link type to bridge for %s: %s (err=%d, errno=%d: %s)\n",
+                        bridge_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK;
         }
         rtnl_link_set_name(link, bridge_name);
 
-        if (rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL) < 0) {
-                CNL_LOG_ERROR("Unable to allocate bridge\n");
+        ret = rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to create bridge %s: %s (err=%d, errno=%d: %s)\n",
+                        bridge_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -276,8 +288,10 @@ libnet_status bridge_delete(const char* bridge_name)
         }
         rtnl_link_set_name(link, bridge_name);
 
-        if (rtnl_link_delete(sk, link) < 0) {
-                CNL_LOG_ERROR("Unable to delete bridge\n");
+        int ret = rtnl_link_delete(sk, link);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to delete bridge %s: %s (err=%d, errno=%d: %s)\n",
+                        bridge_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -315,8 +329,10 @@ libnet_status interface_add_to_bridge(const char* bridge_name, const char* if_na
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -332,8 +348,10 @@ libnet_status interface_add_to_bridge(const char* bridge_name, const char* if_na
                 goto FREE_LINK;
         }
 
-        if (rtnl_link_enslave(sk, link, ltap) < 0) {
-                CNL_LOG_ERROR("Unable to enslave interface to bridge\n");
+        ret = rtnl_link_enslave(sk, link, ltap);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to enslave %s to bridge %s: %s (err=%d, errno=%d: %s)\n",
+                        if_name, bridge_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK2;
         }
         err = CNL_STATUS_SUCCESS;
@@ -373,8 +391,10 @@ libnet_status interface_remove_from_bridge (const char *if_name)
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -384,8 +404,10 @@ libnet_status interface_remove_from_bridge (const char *if_name)
                 goto FREE_CACHE;
         }
 
-        if (rtnl_link_release(sk, ltap) < 0) {
-                CNL_LOG_ERROR("Unable to release interface from bridge\n");
+        ret = rtnl_link_release(sk, ltap);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to release %s from bridge: %s (err=%d, errno=%d: %s)\n",
+                        if_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -486,8 +508,10 @@ libnet_status interface_up(char *if_name)
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -507,8 +531,10 @@ libnet_status interface_up(char *if_name)
         flags |= IFF_UP;
 
         rtnl_link_set_flags(change, flags);
-        if (rtnl_link_change(sk, link, change, 0) < 0) {
-                CNL_LOG_ERROR("Unable to activate\n");
+        ret = rtnl_link_change(sk, link, change, 0);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to bring up interface %s: %s (err=%d, errno=%d: %s)\n",
+                        if_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK2;
         }
 
@@ -550,8 +576,10 @@ libnet_status interface_down(char *if_name)
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -569,8 +597,10 @@ libnet_status interface_down(char *if_name)
         change = rtnl_link_alloc();
         rtnl_link_unset_flags(change, IFF_UP);
 
-        if (rtnl_link_change(sk, link, change, 0) < 0) {
-                CNL_LOG_ERROR("Unable to deactivate\n");
+        ret = rtnl_link_change(sk, link, change, 0);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to bring down interface %s: %s (err=%d, errno=%d: %s)\n",
+                        if_name, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_LINK2;
         }
 
@@ -876,8 +906,10 @@ libnet_status addr_add(char *args)
                 token = strtok(NULL, " ");
         }
 
-        if (rtnl_addr_add(sock, addr, NLM_F_EXCL) < 0) {
-                CNL_LOG_ERROR("%s: Unable to add addr\n", args);
+        int ret = rtnl_addr_add(sock, addr, NLM_F_EXCL);
+        if (ret < 0) {
+                CNL_LOG_ERROR("%s: Unable to add addr: %s (err=%d)\n",
+                        args, nl_geterror(ret), ret);
                 goto FREE_ADDR;
         }
         err = CNL_STATUS_SUCCESS;
@@ -899,8 +931,9 @@ static void addr_delete_cb(struct nl_object *obj, void *arg)
         struct nl_sock *sock = (struct nl_sock *) arg;
         libnet_status err = CNL_STATUS_SUCCESS;
 
-        if (err = rtnl_addr_delete(sock, addr, 0) < 0)
-                CNL_LOG_ERROR("Unable to delete addr - Returned err %d\n", err);
+        if ((err = rtnl_addr_delete(sock, addr, 0)) < 0)
+                CNL_LOG_ERROR("Unable to delete addr: %s (err=%d)\n",
+                        nl_geterror(err), err);
 }
 
 /**
@@ -1002,7 +1035,8 @@ libnet_status addr_delete(char *args)
 
         int ret = rtnl_addr_delete(sock, addr, 0);
         if (ret < 0) {
-                CNL_LOG_ERROR("%s: Unable to del addr (error: %d)\n", args, ret);
+                CNL_LOG_ERROR("%s: Unable to del addr: %s (err=%d)\n",
+                        args, nl_geterror(ret), ret);
                 goto FREE_ADDR;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1063,18 +1097,23 @@ libnet_status route_add(char *args)
                 goto FREE_LINK_CACHE;
         }
 
+        int ret;
         token = strtok(str, " ");
         while( token != NULL) {
                 if(0 == strcmp(token, "-4") || 0 == strcmp(token, "4") ||
                           0 == strcmp(token, "inet")) {
-                        if (rtnl_route_set_family(route, AF_INET) < 0) {
-                                CNL_LOG_ERROR("%s: Unable to set V4 addr\n", args);
+                        ret = rtnl_route_set_family(route, AF_INET);
+                        if (ret < 0) {
+                                CNL_LOG_ERROR("%s: Unable to set V4 addr: %s (err=%d)\n",
+                                        args, nl_geterror(ret), ret);
                                 goto FREE_ROUTE;
                         }
                 } else if(0 == strcmp(token, "-6") || 0 == strcmp(token, "6") ||
                           0 == strcmp(token, "inet6")) {
-                        if (rtnl_route_set_family(route, AF_INET6) < 0) {
-                                CNL_LOG_ERROR("%s: Unable to set V6 addr\n", args);
+                        ret = rtnl_route_set_family(route, AF_INET6);
+                        if (ret < 0) {
+                                CNL_LOG_ERROR("%s: Unable to set V6 addr: %s (err=%d)\n",
+                                        args, nl_geterror(ret), ret);
                                 goto FREE_ROUTE;
                         }
                 } else if (0 == strcmp(token, "default")) {
@@ -1169,8 +1208,10 @@ libnet_status route_add(char *args)
                 goto FREE_ROUTE;
         }
 
-        if (rtnl_route_add(sock, route, NLM_F_CREATE | NLM_F_REPLACE) < 0) {
-                CNL_LOG_ERROR("%s: Unable to add route\n", args);
+        ret = rtnl_route_add(sock, route, NLM_F_CREATE | NLM_F_REPLACE);
+        if (ret < 0) {
+                CNL_LOG_ERROR("%s: Unable to add route: %s (err=%d)\n",
+                        args, nl_geterror(ret), ret);
                 goto FREE_ROUTE;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1193,8 +1234,13 @@ static void route_delete_cb(struct nl_object *obj, void *arg)
         struct nl_sock *sock = (struct nl_sock *) arg;
         libnet_status err = CNL_STATUS_SUCCESS;
 
-        if ((err = rtnl_route_delete(sock, route, 0)) < 0)
-                CNL_LOG_ERROR("Unable to delete route - Returned err = %d\n", err);
+        if ((err = rtnl_route_delete(sock, route, 0)) < 0) {
+                char dst_str[64] = {0};
+                struct nl_addr *dst = rtnl_route_get_dst(route);
+                if (dst) nl_addr2str(dst, dst_str, sizeof(dst_str));
+                CNL_LOG_ERROR("Unable to delete route to %s: %s (err=%d, errno=%d: %s)\n",
+                        dst_str, nl_geterror(err), err, errno, strerror(errno));
+        }
 }
 
 /**
@@ -1245,18 +1291,23 @@ libnet_status route_delete(char *args)
                 goto FREE_ROUTE_CACHE;
         }
 
+        int ret;
         token = strtok(str, " ");
         while (token != NULL) {
                 if(0 == strcmp(token, "-4") || 0 == strcmp(token, "4") ||
                           0 == strcmp(token, "inet")) {
-                        if (rtnl_route_set_family(route, AF_INET) < 0) {
-                                CNL_LOG_ERROR("%s: Unable to set V4 addr\n", args);
+                        ret = rtnl_route_set_family(route, AF_INET);
+                        if (ret < 0) {
+                                CNL_LOG_ERROR("%s: Unable to set V4 addr: %s (err=%d)\n",
+                                        args, nl_geterror(ret), ret);
                                 goto FREE_ROUTE;
                         }
                 } else if(0 == strcmp(token, "-6") || 0 == strcmp(token, "6") ||
                           0 == strcmp(token, "inet6")) {
-                        if (rtnl_route_set_family(route, AF_INET6) < 0) {
-                                CNL_LOG_ERROR("%s: Unable to set V6 addr\n", args);
+                        ret = rtnl_route_set_family(route, AF_INET6);
+                        if (ret < 0) {
+                                CNL_LOG_ERROR("%s: Unable to set V6 addr: %s (err=%d)\n",
+                                        args, nl_geterror(ret), ret);
                                 goto FREE_ROUTE;
                         }
                 } else if (0 == strcmp(token, "default")) {
@@ -1409,8 +1460,10 @@ libnet_status rule_add(char *args)
                 goto FREE_RULE;
         }
 
-        if (rtnl_rule_set_src(rule, src) < 0) {
-                CNL_LOG_ERROR("Unable to set rule src\n");
+        int ret = rtnl_rule_set_src(rule, src);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set rule src (family=%d): %s (err=%d, errno=%d: %s)\n",
+                        family, nl_geterror(ret), ret, errno, strerror(errno));
                 goto FREE_RULE;
         }
 
@@ -1425,8 +1478,10 @@ libnet_status rule_add(char *args)
                                         CNL_LOG_ERROR("Unable to parse rule src\n");
                                         goto FREE_RULE;
                                 }
-                                if (rtnl_rule_set_src(rule, src) < 0) {
-                                        CNL_LOG_ERROR("Unable to set rule src\n");
+                                ret = rtnl_rule_set_src(rule, src);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule src: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
                                         goto FREE_RULE;
                                 }
                         } else {
@@ -1440,8 +1495,10 @@ libnet_status rule_add(char *args)
                                         CNL_LOG_ERROR("Unable to parse rule dst\n");
                                         goto FREE_RULE;
                                 }
-                                if (rtnl_rule_set_dst(rule, dst) < 0) {
-                                        CNL_LOG_ERROR("Unable to set rule dst\n");
+                                ret = rtnl_rule_set_dst(rule, dst);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule dst: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
                                         goto FREE_RULE;
                                 }
                         } else {
@@ -1451,8 +1508,10 @@ libnet_status rule_add(char *args)
                 } else if(0 == strcmp(token, "iif")) {
                         token = strtok(NULL, " ");
                         if (token != NULL) {
-                                if (rtnl_rule_set_iif(rule, token) < 0) {
-                                        CNL_LOG_ERROR("Unable to set rule iif\n");
+                                ret = rtnl_rule_set_iif(rule, token);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule iif: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
                                         goto FREE_RULE;
                                 }
                         } else {
@@ -1462,8 +1521,10 @@ libnet_status rule_add(char *args)
                 } else if(0 == strcmp(token, "oif")) {
                         token = strtok(NULL, " ");
                         if (token != NULL) {
-                                if (rtnl_rule_set_oif(rule, token) < 0) {
-                                        CNL_LOG_ERROR("Unable to set rule oif\n");
+                                ret = rtnl_rule_set_oif(rule, token);
+                                if (ret < 0) {
+                                        CNL_LOG_ERROR("Unable to set rule oif: %s (err=%d)\n",
+                                                nl_geterror(ret), ret);
                                         goto FREE_RULE;
                                 }
                         } else {
@@ -1510,8 +1571,10 @@ libnet_status rule_add(char *args)
                 token = strtok(NULL, " ");
         }
 
-        if (rtnl_rule_add(sock, rule, NLM_F_EXCL) < 0) {
-                CNL_LOG_ERROR("Unable to add rule\n");
+        ret = rtnl_rule_add(sock, rule, NLM_F_EXCL);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to add rule: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_RULE;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1534,7 +1597,8 @@ static void rule_delete_cb(struct nl_object *obj, void *arg)
         libnet_status err = CNL_STATUS_SUCCESS;
 
         if ((err = rtnl_rule_delete(sock, rule, 0)) < 0)
-                CNL_LOG_ERROR("Unable to delete rule - Returned err %d\n", err);
+                CNL_LOG_ERROR("Unable to delete rule: %s (err=%d)\n",
+                        nl_geterror(err), err);
 }
 
 /**
@@ -1684,8 +1748,10 @@ libnet_status tunnel_add_ip4ip6(const char *tunnel_name, const char *dev_name,
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &link_cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -1702,8 +1768,10 @@ libnet_status tunnel_add_ip4ip6(const char *tunnel_name, const char *dev_name,
         }
 
         rtnl_link_set_name(link, tunnel_name);
-        if (rtnl_link_ip6_tnl_set_link(link, if_index) < 0) {
-                CNL_LOG_ERROR("Unable to set tunnel interface index\n");
+        ret = rtnl_link_ip6_tnl_set_link(link, if_index);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set tunnel interface index: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK;
         }
 
@@ -1713,8 +1781,10 @@ libnet_status tunnel_add_ip4ip6(const char *tunnel_name, const char *dev_name,
                 goto FREE_LINK;
         }
 
-        if (rtnl_link_ip6_tnl_set_local(link, &addr) < 0) {
-                CNL_LOG_ERROR("Unable to set tunnel local address\n");
+        ret = rtnl_link_ip6_tnl_set_local(link, &addr);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set tunnel local address: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK;
         }
 
@@ -1724,13 +1794,17 @@ libnet_status tunnel_add_ip4ip6(const char *tunnel_name, const char *dev_name,
                 goto FREE_LINK;
         }
 
-        if (rtnl_link_ip6_tnl_set_remote(link, &addr) < 0) {
-                CNL_LOG_ERROR("Unable to set tunnel remote address\n");
+        ret = rtnl_link_ip6_tnl_set_remote(link, &addr);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set tunnel remote address: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK;
         }
 
-        if (rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL) < 0) {
-                CNL_LOG_ERROR("Unable to add link\n");
+        ret = rtnl_link_add(sk, link, NLM_F_CREATE | NLM_F_EXCL);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to add link: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1771,8 +1845,10 @@ libnet_status interface_delete(char *name)
         link = rtnl_link_alloc();
         rtnl_link_set_name(link, name);
 
-        if (rtnl_link_delete(sk, link) < 0) {
-                CNL_LOG_ERROR("Unable to delete link\n");
+        int ret = rtnl_link_delete(sk, link);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to delete link: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1811,8 +1887,10 @@ libnet_status interface_set_flags(char *if_name, unsigned int flags)
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -1824,8 +1902,10 @@ libnet_status interface_set_flags(char *if_name, unsigned int flags)
         change = rtnl_link_alloc();
         rtnl_link_set_flags(change, flags);
 
-        if (rtnl_link_change(sk, link, change, 0) < 0) {
-                CNL_LOG_ERROR("Unable to set flag\n");
+        ret = rtnl_link_change(sk, link, change, 0);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to set flag: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK2;
         }
         err = CNL_STATUS_SUCCESS;
@@ -1870,8 +1950,10 @@ libnet_status interface_rename(char *if_name, char *new_name)
                 goto FREE_SOCKET;
         }
 
-        if (rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache) < 0) {
-                CNL_LOG_ERROR("Unable to allocate cache\n");
+        int ret = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to allocate cache: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_SOCKET;
         }
 
@@ -1883,8 +1965,10 @@ libnet_status interface_rename(char *if_name, char *new_name)
         change = rtnl_link_alloc();
         rtnl_link_set_name(change, new_name);
 
-        if (rtnl_link_change(sk, link, change, 0) < 0) {
-                CNL_LOG_ERROR("Unable to change name\n");
+        ret = rtnl_link_change(sk, link, change, 0);
+        if (ret < 0) {
+                CNL_LOG_ERROR("Unable to change name: %s (err=%d)\n",
+                        nl_geterror(ret), ret);
                 goto FREE_LINK2;
         }
         err = CNL_STATUS_SUCCESS;

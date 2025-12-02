@@ -77,6 +77,10 @@ struct nl_cache *libnet_route_alloc_cache(struct nl_sock *sk, int flags);
 
 int libnet_route_parse_dst(struct rtnl_route *route, char *arg);
 
+int libnet_route_parse_src(struct rtnl_route *route, char *arg);
+
+int libnet_route_parse_pref_src(struct rtnl_route *route, char *arg);
+
 int libnet_route_parse_metric(struct rtnl_route *route, char *subopts);
 
 int libnet_route_parse_nexthop(struct rtnl_route *route, char *subopts,
