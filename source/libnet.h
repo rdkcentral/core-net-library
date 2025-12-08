@@ -21,7 +21,7 @@
 #if !defined(_LINUX_IF_H) && !defined(_NET_IF_H)
 #include <net/if.h>
 #endif
-
+#include <stdint.h>
 #define IP_ARG_SIZE 512
 
 /*
