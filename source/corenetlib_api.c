@@ -1,10 +1,4 @@
 #include <stdio.h>
-// Logging now uses printf only
-// Code improvements for security and maintainability:
-// - Replaced all RDK_LOG calls with printf for consistent logging
-// - Fixed potential buffer overflow issues with safer string operations
-// - Removed duplicate printf statements for cleaner output
-// - Added proper null termination for string copies
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,7 +11,6 @@
 #include <ctype.h>
 #include <cjson/cJSON.h>
 
-// Define missing constants if not already defined
 #ifndef CNL_STATUS_NOT_FOUND
 #define CNL_STATUS_NOT_FOUND -2
 #endif
@@ -1707,117 +1700,13 @@ int handle_interface_set_flags(int argc, char *argv[]) {
     }
 }
 
-int handle_interface_get_stats(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: interface_get_stats <if_name> <stats_mask>\n");
-        return -1;
-    }
-    
-    char *if_name = argv[2];
-    char *stats_mask_str = argv[3];
-    
-    if (!if_name || strlen(if_name) == 0) {
-        printf("Error: Invalid interface name\n");
-        return -1;
-    }
-    
-    unsigned int stats_mask = (unsigned int)strtoul(stats_mask_str, NULL, 0);
-    struct interface_stats stats = {0};
-    
-    int result = interface_get_stats(if_name, &stats, stats_mask);
-    if (result == CNL_STATUS_SUCCESS) {
-        printf("PASS: Successfully retrieved stats for interface %s\n", if_name);
-        printf("Stats: rx_bytes=%llu, tx_bytes=%llu, rx_packets=%llu, tx_packets=%llu\n",
-               stats.rx_bytes, stats.tx_bytes, stats.rx_packets, stats.tx_packets);
-        return 0;
-    } else {
-        printf("FAIL: Failed to get stats for interface %s\n", if_name);
-        return -1;
-    }
-}
 
-int handle_tunnel_add_ip4ip6(int argc, char *argv[]) {
-    if (argc != 7) {
-        printf("Usage: tunnel_add_ip4ip6 <tunnel_name> <dev_name> <local_ip6> <remote_ip6> <encaplimit>\n");
-        return -1;
-    }
-    
-    char *tunnel_name = argv[2];
-    char *dev_name = argv[3];
-    char *local_ip6 = argv[4];
-    char *remote_ip6 = argv[5];
-    char *encaplimit_str = argv[6];
-    
-    if (!tunnel_name || !dev_name || !local_ip6 || !remote_ip6 || !encaplimit_str) {
-        printf("Error: Invalid parameters for tunnel creation\n");
-        return -1;
-    }
-    
-    int encaplimit = atoi(encaplimit_str);
-    
-    int result = tunnel_add_ip4ip6(tunnel_name, dev_name, local_ip6, remote_ip6, encaplimit);
-    if (result == CNL_STATUS_SUCCESS) {
-        printf("PASS: Successfully created IP4IP6 tunnel %s\n", tunnel_name);
-        return 0;
-    } else {
-        printf("FAIL: Failed to create IP4IP6 tunnel %s\n", tunnel_name);
-        return -1;
-    }
-}
 
-int handle_neighbour_delete(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: neighbour_delete <if_name> <ip>\n");
-        return -1;
-    }
-    
-    char *if_name = argv[2];
-    char *ip = argv[3];
-    
-    if (!if_name || strlen(if_name) == 0) {
-        printf("Error: Invalid interface name\n");
-        return -1;
-    }
-    
-    if (!ip || strlen(ip) == 0) {
-        printf("Error: Invalid IP address\n");
-        return -1;
-    }
-    
-    if (!validate_ip_address(ip)) {
-        printf("Error: Invalid IP address format: %s\n", ip);
-        return -1;
-    }
-    
-    int result = neighbour_delete(if_name, ip);
-    if (result == CNL_STATUS_SUCCESS) {
-        printf("PASS: Successfully deleted neighbour entry for %s on %s\n", ip, if_name);
-        return 0;
-    } else {
-        printf("FAIL: Failed to delete neighbour entry for %s on %s\n", ip, if_name);
-        return -1;
-    }
-}
 
-int handle_neighbour_get_list(int argc, char *argv[]) {
-    struct neighbour_info neigh_info = {0};
-    char mac[18] = {0}; // Placeholder for MAC address
-    char if_name[64] = {0}; // Placeholder for interface name
-    int af_filter = AF_UNSPEC; // Use AF_UNSPEC to include all address families
-    
-    int result = neighbour_get_list(&neigh_info, mac, if_name, af_filter);
-    if (result == CNL_STATUS_SUCCESS) {
-        printf("PASS: Successfully retrieved neighbour list\n");
-        printf("Retrieved neighbour information for MAC: %s, Interface: %s\n", mac, if_name);
-        
-        // Free the allocated memory
-        neighbour_free_neigh(&neigh_info);
-        return 0;
-    } else {
-        printf("FAIL: Failed to retrieve neighbour list\n");
-        return -1;
-    }
-}
+
+
+
+
 
 int handle_neighbour_free_neigh(int argc, char *argv[]) {
     struct neighbour_info neigh_info = {0};
@@ -2086,7 +1975,7 @@ void cleanup_test_groups(TestGroup *groups, int num_groups) {
         for (int i = 0; i < groups[g].count; i++) {
             // Free description
             if (groups[g].array[i].description) {
-                free(groups[g].array[i].description);
+                free((void *)groups[g].array[i].description);
                 groups[g].array[i].description = NULL;
             }
             
