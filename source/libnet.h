@@ -38,15 +38,6 @@
 #define NEIGH_STATE_NONE         0x00
 #endif
 
-#define CNL_LOG_INFO(format, ...)     \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_ERROR(format, ...)    \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_NOTICE(format, ...)   \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_WARNING(format, ...)  \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-
 typedef enum {
         CNL_STATUS_SUCCESS = 0,
         CNL_STATUS_FAILURE = -1
