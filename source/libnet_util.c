@@ -36,7 +36,8 @@ int libnet_connect(struct nl_sock *socket, int proto)
 
         err = nl_connect(socket, proto);
         if (err < 0) {
-                fprintf(stderr, "Failed to connect netlink socket");
+                CNL_LOG_ERROR("Failed to connect netlink socket (proto=%d): %s (err=%d)\n",
+                        proto, nl_geterror(err), err);
         }
 
         return err;
@@ -48,7 +49,7 @@ struct nl_sock *libnet_alloc_socket(void)
 
         socket = nl_socket_alloc();
         if (socket == NULL) {
-                fprintf(stderr, "Failed to allocate netlink socket");
+                CNL_LOG_ERROR("Failed to allocate netlink socket\n");
                 return NULL;
         }
 
@@ -61,7 +62,8 @@ int libnet_addr_parse(const char *str, int family, struct nl_addr **addr)
 
         err = nl_addr_parse(str, family, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to parse address");
+                CNL_LOG_ERROR("Failed to parse address '%s': %s (err=%d)\n",
+                        str, nl_geterror(err), err);
                 return err;
         }
 
@@ -76,8 +78,8 @@ struct nl_cache *libnet_alloc_cache(struct nl_sock *socket, const char *name,
 
         err = ac(socket, &cache);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate %s cache: %s",
-                        name, nl_geterror(err));
+                CNL_LOG_ERROR("Failed to allocate %s cache: %s (err=%d)\n",
+                        name, nl_geterror(err), err);
                 return NULL;
         }
 
@@ -94,8 +96,8 @@ struct nl_cache *libnet_alloc_cache_flags(struct nl_sock *socket,
 
         err = ac(socket, &cache, flags);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate %s cache: %s",
-                        name, nl_geterror(err));
+                CNL_LOG_ERROR("Failed to allocate %s cache (flags=0x%x): %s (err=%d)\n",
+                        name, flags, nl_geterror(err), err);
                 return NULL;
         }
 
@@ -110,7 +112,7 @@ struct rtnl_link *libnet_link_alloc(void)
 
         rt_link = rtnl_link_alloc();
         if (rt_link == NULL) {
-                fprintf(stderr, "Failed to allocate link object");
+                CNL_LOG_ERROR("Failed to allocate link object\n");
                 return NULL;
         }
 
@@ -126,7 +128,8 @@ struct nl_cache *libnet_link_alloc_cache_family_flags(struct nl_sock *socket,
 
         err = rtnl_link_alloc_cache_flags(socket, family, &cache, flags);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate link cache");
+                CNL_LOG_ERROR("Failed to allocate link cache (family=%d, flags=0x%x): %s (err=%d)\n",
+                        family, flags, nl_geterror(err), err);
                 return NULL;
         }
 
@@ -157,7 +160,7 @@ struct rtnl_addr *libnet_addr_alloc(void)
 
         address = rtnl_addr_alloc();
         if (address == NULL) {
-                fprintf(stderr, "Failed to allocate address object");
+                CNL_LOG_ERROR("Failed to allocate address object\n");
                 return NULL;
         }
 
@@ -176,7 +179,8 @@ int libnet_addr_parse_local(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_local(address, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set local address");
+                CNL_LOG_ERROR("Failed to set local address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
         }
 
 FREE_ADDR:
@@ -191,13 +195,13 @@ int libnet_addr_parse_dev(struct rtnl_addr *address, struct nl_cache *link_cache
         int err = 0;
 
         if (link_cache == NULL) {
-                fprintf(stderr, "link_cache is NULL");
+                CNL_LOG_ERROR("link_cache is NULL\n");
                 return EINVAL;
         }
 
         ival = rtnl_link_name2i(link_cache, args);
         if (ival <= 0) {
-                fprintf(stderr, "Link %s does not exist or invalid index", args);
+                CNL_LOG_ERROR("Link '%s' does not exist or invalid index\n", args);
                 return ENOENT;
         }
 
@@ -211,7 +215,8 @@ int libnet_addr_parse_label(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_label(address, args);
         if (err < 0) {
-                fprintf(stderr, "Failed to set address label");
+                CNL_LOG_ERROR("Failed to set address label '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
         }
 
         return err;
@@ -229,7 +234,8 @@ int libnet_addr_parse_peer(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_peer(address, nl_a);
         if (err < 0)
-                fprintf(stderr, "Failed to set peer address");
+                CNL_LOG_ERROR("Failed to set peer address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
 
 FREE_ADDR:
         nl_addr_put(nl_a);
@@ -248,7 +254,8 @@ int libnet_addr_parse_broadcast(struct rtnl_addr *address, char *args)
 
         err = rtnl_addr_set_broadcast(address, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set broadcast address");
+                CNL_LOG_ERROR("Failed to set broadcast address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -266,7 +273,8 @@ static uint32_t parse_lifetime(const char *args, int *err)
 
         *err = nl_str2msec(args, &msecs);
         if (*err < 0) {
-                fprintf(stderr, "Failed to parse time string");
+                CNL_LOG_ERROR("Failed to parse time string '%s': %s (err=%d)\n",
+                        args, nl_geterror(*err), *err);
                 return 0;
         }
 
@@ -308,7 +316,7 @@ struct rtnl_route *libnet_route_alloc(void)
 
         rt_route = rtnl_route_alloc();
         if (rt_route == NULL) {
-                fprintf(stderr, "Failed to allocate route object");
+                CNL_LOG_ERROR("Failed to allocate route object\n");
                 return NULL;
         }
 
@@ -322,7 +330,8 @@ struct nl_cache *libnet_route_alloc_cache(struct nl_sock *socket, int flags)
 
         err = rtnl_route_alloc_cache(socket, AF_UNSPEC, flags, &cache);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate route cache");
+                CNL_LOG_ERROR("Failed to allocate route cache (flags=%d): %s (err=%d)\n",
+                        flags, nl_geterror(err), err);
                 return NULL;
         }
 
@@ -341,7 +350,8 @@ int libnet_route_parse_dst(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_dst(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set destination address");
+                CNL_LOG_ERROR("Failed to set destination address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -362,7 +372,8 @@ int libnet_route_parse_src(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_src(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set source address");
+                CNL_LOG_ERROR("Failed to set source address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -383,7 +394,8 @@ int libnet_route_parse_pref_src(struct rtnl_route *rt_route, char *args)
 
         err = rtnl_route_set_pref_src(rt_route, addr);
         if (err < 0) {
-                fprintf(stderr, "Failed to set preferred source address");
+                CNL_LOG_ERROR("Failed to set preferred source address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 
@@ -419,23 +431,25 @@ int libnet_route_parse_metric(struct rtnl_route *route, char *options)
         while (*options != '\0') {
                 index = getsubopt(&options, metrics, &argument);
                 if (index == -1) {
-                        fprintf(stderr, "Unrecognized metric token \"%s\"\n", argument ? argument : "NULL");
+                        CNL_LOG_ERROR("Unrecognized metric token \"%s\"\n",
+                                argument ? argument : "NULL");
                         return EINVAL;
                 }
 
                 if (argument == NULL) {
-                        fprintf(stderr, "Metric \"%s\", no value provided\n", metrics[index]);
+                        CNL_LOG_ERROR("Metric \"%s\", no value provided\n", metrics[index]);
                         return EINVAL;
                 }
 
                 value = strtoul(argument, &end, 0);
                 if (end == argument) {
-                        fprintf(stderr, "Metric \"%s\", value is not numeric\n", metrics[index]);
+                        CNL_LOG_ERROR("Metric \"%s\", value is not numeric\n", metrics[index]);
                         return EINVAL;
                 }
 
                 if ((index = rtnl_route_set_metric(route, index, value)) < 0) {
-                        fprintf(stderr, "Failed to set metric \"%s\": %s\n", metrics[index], nl_geterror(index));
+                        CNL_LOG_ERROR("Failed to set metric \"%s\": %s\n",
+                                metrics[index], nl_geterror(index));
                         break;
                 }
         }
@@ -467,27 +481,26 @@ int libnet_route_parse_nexthop(struct rtnl_route *rt_route, char *subopts,
         int err_val = 0;
 
         if (!(nexthop = rtnl_route_nh_alloc())) {
-                fprintf(stderr, "Out of memory");
+                CNL_LOG_ERROR("Out of memory\n");
                 return ENOMEM;
         }
 
         while (*subopts != '\0') {
                 int ret = getsubopt(&subopts, tokens, &args);
                 if (ret == -1) {
-                        fprintf(stderr, "Unknown nexthop token %s", args);
+                        CNL_LOG_ERROR("Unknown nexthop token %s\n", args);
                         return EINVAL;
                 }
 
                 if (args == NULL) {
-                        fprintf(stderr, "Missing argument to option %s\n",
-                                tokens[ret]);
+                        CNL_LOG_ERROR("Missing argument to option %s\n", tokens[ret]);
                         return EINVAL;
                 }
 
                 switch (ret) {
                 case NEXTHOP_DEV:
                         if (!(int_val = rtnl_link_name2i(link_cache, args))) {
-                                fprintf(stderr, "Link %s does not exist", args);
+                                CNL_LOG_ERROR("Link device '%s' does not exist\n", args);
                                 return ENOENT;
                         }
 
@@ -520,9 +533,7 @@ int libnet_route_parse_nexthop(struct rtnl_route *rt_route, char *subopts,
                 case NEXTHOP_WEIGHT:
                         ulval = strtoul(args, &end_ptr, 0);
                         if (end_ptr == args) {
-                                fprintf(stderr,
-                                        "Invalid weight %s, not numeric",
-                                        args);
+                                CNL_LOG_ERROR("Invalid weight %s, not numeric\n", args);
                                 return EINVAL;
                         }
                         rtnl_route_nh_set_weight(nexthop, ulval);
@@ -545,7 +556,7 @@ int libnet_route_parse_table(struct rtnl_route *rt_route, char *args)
         if (endptr == args) {
                 table = rtnl_route_str2table(args);
                 if (table < 0) {
-                        fprintf(stderr, "Unknown table name %s", args);
+                        CNL_LOG_ERROR("Unknown table name %s\n", args);
                         return EINVAL;
                 }
         }
@@ -564,7 +575,7 @@ int libnet_route_parse_prio(struct rtnl_route *route, char *arg)
 
         lval = strtoul(arg, &end_ptr, 0);
         if (end_ptr == arg) {
-                fprintf(stderr, "Invalid priority value, not numeric");
+                CNL_LOG_ERROR("Invalid priority value, not numeric\n");
                 return -1;
         }
         rtnl_route_set_priority(route, lval);
@@ -576,7 +587,8 @@ int libnet_route_parse_scope(struct rtnl_route *route, char *arg)
         int ival;
 
         if ((ival = rtnl_str2scope(arg)) < 0) {
-                fprintf(stderr, "Unknown routing scope \"%s\"", arg);
+                CNL_LOG_ERROR("Unknown routing scope \"%s\": %s (err=%d)\n",
+                        arg, nl_geterror(ival), ival);
                 return -1;
         }
         rtnl_route_set_scope(route, ival);
@@ -592,8 +604,7 @@ int libnet_route_parse_protocol(struct rtnl_route *route, char *arg)
         lval = strtoul(arg, &end_ptr, 0);
         if (end_ptr == arg) {
                 if ((proto = rtnl_route_str2proto(arg)) < 0) {
-                        fprintf(stderr, "Unknown routing protocol name \"%s\"",
-                                arg);
+                        CNL_LOG_ERROR("Unknown routing protocol name \"%s\"\n", arg);
                         return -1;
                 }
         }
@@ -610,10 +621,12 @@ int libnet_route_parse_type(struct rtnl_route *route, char *arg)
         int ival;
 
         if ((ival = nl_str2rtntype(arg)) < 0)
-                fprintf(stderr, "Unknown routing type \"%s\"", arg);
+                CNL_LOG_ERROR("Unknown routing type \"%s\": %s (err=%d)\n",
+                        arg, nl_geterror(ival), ival);
 
         if ((ival = rtnl_route_set_type(route, ival)) < 0)
-                fprintf(stderr, "Unable to set routing type: %d", ival);
+                CNL_LOG_ERROR("Unable to set routing type: %s (err=%d)\n",
+                        nl_geterror(ival), ival);
         return ival;
 }
 
@@ -625,7 +638,7 @@ struct rtnl_rule *libnet_rule_alloc(void)
 
         rt_rule = rtnl_rule_alloc();
         if (rt_rule == NULL) {
-                fprintf(stderr, "Failed to allocate rule object");
+                CNL_LOG_ERROR("Failed to allocate rule object\n");
                 return NULL;
         }
 
@@ -639,7 +652,8 @@ struct nl_cache *libnet_rule_alloc_cache(struct nl_sock *socket)
 
         err = rtnl_rule_alloc_cache(socket, AF_UNSPEC, &cache);
         if (err < 0) {
-                fprintf(stderr, "Failed to allocate routing rule cache");
+                CNL_LOG_ERROR("Failed to allocate routing rule cache: %s (err=%d)\n",
+                        nl_geterror(err), err);
                 return NULL;
         }
 
@@ -654,7 +668,7 @@ struct rtnl_neigh *libnet_neigh_alloc(void)
 
         rt_neigh = rtnl_neigh_alloc();
         if (rt_neigh == NULL)
-                fprintf(stderr, "Failed to allocate neighbour object");
+                CNL_LOG_ERROR("Failed to allocate neighbour object\n");
         return rt_neigh;
 }
 
@@ -668,7 +682,8 @@ int libnet_neigh_parse_dst(struct rtnl_neigh *rt_neigh, char *args)
                 return err;
         err = rtnl_neigh_set_dst(rt_neigh, nl_a);
         if (err < 0) {
-                fprintf(stderr, "Failed to set local address");
+                CNL_LOG_ERROR("Failed to set neighbour destination address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
                 goto FREE_ADDR;
         }
 FREE_ADDR:
@@ -684,7 +699,7 @@ int libnet_neigh_parse_dev(struct rtnl_neigh *rt_neigh,
 
         ival = rtnl_link_name2i(link_cache, args);
         if (ival == 0) {
-                fprintf(stderr, "%s does not exist", args);
+                CNL_LOG_ERROR("Neighbour device '%s' does not exist\n", args);
                 return err;
         }
         rtnl_neigh_set_ifindex(rt_neigh, ival);
