@@ -23,6 +23,15 @@
 extern "C" {
 #endif
 
+#define CNL_LOG_INFO(format, ...)     \
+                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_ERROR(format, ...)    \
+                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_NOTICE(format, ...)   \
+                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_WARNING(format, ...)  \
+                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
 /************** Common helpers ******************/
 
 struct nl_sock *libnet_alloc_socket(void);
@@ -76,6 +85,10 @@ struct rtnl_route *libnet_route_alloc(void);
 struct nl_cache *libnet_route_alloc_cache(struct nl_sock *sk, int flags);
 
 int libnet_route_parse_dst(struct rtnl_route *route, char *arg);
+
+int libnet_route_parse_src(struct rtnl_route *route, char *arg);
+
+int libnet_route_parse_pref_src(struct rtnl_route *route, char *arg);
 
 int libnet_route_parse_metric(struct rtnl_route *route, char *subopts);
 
