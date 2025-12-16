@@ -29,8 +29,6 @@
 #include <netlink/route/link/vlan.h>
 #include <netlink/route/link/ip6tnl.h>
 
-#include "safec_lib_common.h"
-
 #include "libnet_util.h"
 #include "libnet.h"
 
@@ -74,10 +72,8 @@ libnet_status file_read(const char *file_name, char *buf, size_t count)
 {
         FILE *fp;
         libnet_status err = CNL_STATUS_FAILURE;
-        errno_t rc;
 
-        rc = memset_s(buf, count, 0, count);
-        ERR_CHK(rc);
+        memset(buf, 0, count);
 
         fp = fopen(file_name, "r");
         if(NULL == fp)
@@ -104,11 +100,10 @@ libnet_status vlan_create(const char *if_name, int vid)
         int master_index;
         libnet_status err = CNL_STATUS_FAILURE;
         char vlan_if_name[32] = {0};
-        errno_t rc;
+        int rc;
 
-        rc = sprintf_s(vlan_if_name, sizeof(vlan_if_name), "%s.%d", if_name,vid);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        rc = snprintf(vlan_if_name, sizeof(vlan_if_name), "%s.%d", if_name, vid);
+        if (rc < 0 || rc >= (int)sizeof(vlan_if_name))
                 return CNL_STATUS_FAILURE;
 
         sk = libnet_alloc_socket();
@@ -413,7 +408,7 @@ libnet_status bridge_set_stp(const char *bridge_name, char *val)
         int len = (val != NULL ? strlen(val) : 0);
         int off = 0, on = 0;
         int stp_state;
-        errno_t rc;
+        int rc;
 
         if (len == 3)
         {
@@ -444,10 +439,9 @@ libnet_status bridge_set_stp(const char *bridge_name, char *val)
                 stp_state = (int) STP_LISTENING;
         }
 
-        rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/bridge/stp_state",
+        rc = snprintf(file_name, sizeof(file_name), "/sys/class/net/%s/bridge/stp_state",
                        bridge_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < 0 || rc >= (int)sizeof(file_name))
                 return CNL_STATUS_FAILURE;
 
         if (-1 == access(file_name, F_OK | W_OK))
@@ -595,11 +589,10 @@ FREE_SOCKET:
 int interface_exist(const char *if_name)
 {
         char file_name[64] = {0};
-        errno_t rc;
+        int rc;
 
-        rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        rc = snprintf(file_name, sizeof(file_name), "/sys/class/net/%s", if_name);
+        if (rc < 0 || rc >= (int)sizeof(file_name))
                 return CNL_STATUS_FAILURE;
 
         if (0 == access(file_name, F_OK))
@@ -617,11 +610,10 @@ int interface_exist(const char *if_name)
 libnet_status interface_set_mtu(const char *if_name, char *val)
 {
         char file_name[64] = {0};
-        errno_t rc;
+        int rc;
 
-        rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/mtu", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        rc = snprintf(file_name, sizeof(file_name), "/sys/class/net/%s/mtu", if_name);
+        if (rc < 0 || rc >= (int)sizeof(file_name))
                 return CNL_STATUS_FAILURE;
 
         return file_write(file_name, val, strlen(val) + 1);
@@ -639,11 +631,10 @@ libnet_status interface_get_mac(const char *if_name, char *mac, size_t size)
 {
         char file_name[64] = {0};
         libnet_status err = CNL_STATUS_FAILURE;
-        errno_t rc;
+        int rc;
 
-        rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/address", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        rc = snprintf(file_name, sizeof(file_name), "/sys/class/net/%s/address", if_name);
+        if (rc < 0 || rc >= (int)sizeof(file_name))
                 return CNL_STATUS_FAILURE;
 
         err = file_read(file_name, mac, size);
@@ -1935,12 +1926,8 @@ libnet_status bridge_get_info(char *bridge_name, struct bridge_info *bridge)
         struct rtnl_link *link;
         uint32_t ifindex;
         libnet_status err = CNL_STATUS_FAILURE;
-        errno_t rc = -1;
 
-        rc = memset_s(bridge, sizeof(struct bridge_info), 0, sizeof(struct bridge_info));
-        ERR_CHK(rc);
-        if (rc < EOK)
-                return CNL_STATUS_FAILURE;
+        memset(bridge, 0, sizeof(struct bridge_info));
 
         sk = libnet_alloc_socket();
         if (sk == NULL) {

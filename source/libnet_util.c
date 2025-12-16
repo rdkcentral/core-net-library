@@ -24,8 +24,6 @@
 #include <netlink/route/route.h>
 #include <netlink/route/rule.h>
 
-#include "safec_lib_common.h"
-
 #include "libnet_util.h"
 
 /************** Common helpers ******************/
