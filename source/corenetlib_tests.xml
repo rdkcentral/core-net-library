@@ -1266,7 +1266,7 @@
             <handler>handle_vlan_create</handler>
         </testcase>
         <testcase>
-            <description>interface_rename brlan99.180 brlan220</description>
+            <description>interface_rename brlan999.180 brlan220</description>
             <is_negative>0</is_negative>
             <argc>4</argc>
             <argv>
