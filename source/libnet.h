@@ -21,7 +21,7 @@
 #if !defined(_LINUX_IF_H) && !defined(_NET_IF_H)
 #include <net/if.h>
 #endif
-
+#include <stdint.h>
 #define IP_ARG_SIZE 512
 
 /*
@@ -37,15 +37,6 @@
 #define NEIGH_STATE_PERMANENT    0x80
 #define NEIGH_STATE_NONE         0x00
 #endif
-
-#define CNL_LOG_INFO(format, ...)     \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_ERROR(format, ...)    \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_NOTICE(format, ...)   \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
-#define CNL_LOG_WARNING(format, ...)  \
-                              fprintf (stderr, "%s: "format, __FUNCTION__, ##__VA_ARGS__)
 
 typedef enum {
         CNL_STATUS_SUCCESS = 0,
