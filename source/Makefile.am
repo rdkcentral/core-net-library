@@ -23,3 +23,11 @@ libnet_la_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3
 
 libnet_la_includedir = ${includedir}
 libnet_la_include_HEADERS = libnet.h
+
+# Add the application to delete routes using multiple threads
+bin_PROGRAMS = delete_route_app
+
+delete_route_app_SOURCES = delete_route.c ${libnet_la_SOURCES}
+
+delete_route_app_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
+delete_route_app_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3 -lpthread
