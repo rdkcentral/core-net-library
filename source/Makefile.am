@@ -31,3 +31,11 @@ delete_route_app_SOURCES = delete_route.c ${libnet_la_SOURCES}
 
 delete_route_app_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
 delete_route_app_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3 -lpthread
+
+# Add the application to delete addresses using multiple threads
+bin_PROGRAMS += delete_addr_app
+
+delete_addr_app_SOURCES = delete_addr_app.c ${libnet_la_SOURCES}
+
+delete_addr_app_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
+delete_addr_app_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3 -lpthread
