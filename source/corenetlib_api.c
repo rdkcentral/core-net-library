@@ -876,8 +876,10 @@ int handle_interface_get_ip(int argc, char *argv[]) {
 
         // Validation: check if IP is present in ifconfig output
         char validation_command[256];
+        // snprintf(validation_command, sizeof(validation_command),
+        //          "ifconfig %s | grep 'inet addr:' | awk '{print $2}' | cut -d: -f2", if_name);
         snprintf(validation_command, sizeof(validation_command),
-                 "ifconfig %s | grep 'inet addr:' | awk '{print $2}' | cut -d: -f2", if_name);
+                 "ip -4 addr show %s | awk '/inet / {print $2}' | cut -d/ -f1", if_name);
 
         char output[128] = {0};
         if (execute_command(validation_command, output, sizeof(output)) != 0) {
@@ -1555,20 +1557,31 @@ int handle_interface_get_stats(int argc, char *argv[]) {
 }
 
 int handle_neighbour_get_list(int argc, char *argv[]) {
-    struct neighbour_info neigh_info = {0};
+    struct neighbour_info *neigh_info = malloc(sizeof(struct neighbour_info));
+    if(neigh_info == NULL){
+        printf("Failed to allocate memory for neighbour info.\n");
+        return -1;
+    }
+    neigh_info->neigh_count = 0;
+    neigh_info->neigh_arr = malloc( INITIAL_NEIGH_CAPACITY * sizeof(struct _neighbour_info));
+    if(neigh_info->neigh_arr == NULL){
+        printf("Failed to allocate memory for neighbour list.\n");
+        free(neigh_info);
+        return -1;
+    }
     char mac[18] = {0}; // Placeholder for MAC address
     char if_name[64] = {0}; // Placeholder for interface name
     int af_filter = AF_UNSPEC; // Use AF_UNSPEC to include all address families
-    if (neighbour_get_list(&neigh_info, mac, if_name, af_filter) == CNL_STATUS_SUCCESS) {
+    if (neighbour_get_list(neigh_info, mac, if_name, af_filter) == CNL_STATUS_SUCCESS) {
         printf("Neighbour list:\n");
-        for (int i = 0; i < neigh_info.neigh_count; i++) {
+        for (int i = 0; i < neigh_info->neigh_count; i++) {
             printf("  Local: %s, MAC: %s, Interface: %s, State: %d\n",
-                   neigh_info.neigh_arr[i].local,
-                   neigh_info.neigh_arr[i].mac,
-                   neigh_info.neigh_arr[i].ifname,
-                   neigh_info.neigh_arr[i].state);
+                   neigh_info->neigh_arr[i].local,
+                   neigh_info->neigh_arr[i].mac,
+                   neigh_info->neigh_arr[i].ifname,
+                   neigh_info->neigh_arr[i].state);
         }
-        neighbour_free_neigh(&neigh_info);
+        neighbour_free_neigh(neigh_info);
         return 0;
     } else {
         printf("Failed to get neighbour list.\n");
