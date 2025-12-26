@@ -834,6 +834,7 @@ libnet_status addr_add(char *args)
 
         char *str = strdup(args);
         char *token;
+        char *saveptr;
 
         sock = libnet_alloc_socket();
         if (sock == NULL) {
@@ -858,10 +859,10 @@ libnet_status addr_add(char *args)
                 goto FREE_CACHE;
         }
 
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while( token != NULL) {
                 if(0 == strcmp(token, "dev")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_dev(addr, link_cache, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse dev field\n", args);
@@ -869,7 +870,7 @@ libnet_status addr_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "valid_lft")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_valid(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse valid_lft field \n", args);
@@ -877,7 +878,7 @@ libnet_status addr_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "preferred_lft")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_preferred(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse preferred_lft field\n", args);
@@ -885,7 +886,7 @@ libnet_status addr_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "broadcast")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_broadcast(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse broadcast field\n", args);
@@ -905,7 +906,7 @@ libnet_status addr_add(char *args)
                                 goto FREE_ADDR;
                         }
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
 
         int ret = rtnl_addr_add(sock, addr, NLM_F_EXCL);
@@ -950,9 +951,10 @@ libnet_status addr_delete(char *args)
 
         char *str = strdup(args);
         char *token;
+        char *saveptr;
         int family = AF_UNSPEC;
 
-        static struct nl_sock *sock;
+        struct nl_sock *sock;
         struct nl_cache *link_cache;
         struct nl_cache *addr_cache;
         struct rtnl_addr *addr;
@@ -988,10 +990,10 @@ libnet_status addr_delete(char *args)
                 goto FREE_ADDR_CACHE;
         }
 
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while( token != NULL) {
                 if(0 == strcmp(token, "dev")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_dev(addr, link_cache, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse dev field\n", args);
@@ -999,7 +1001,7 @@ libnet_status addr_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "valid_lft")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_valid(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse valid_lft field\n", args);
@@ -1007,7 +1009,7 @@ libnet_status addr_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "preferred_lft")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_preferred(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse preferred_lft field\n", args);
@@ -1015,7 +1017,7 @@ libnet_status addr_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "broadcast")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse_broadcast(addr, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse broadcast field\n", args);
@@ -1034,7 +1036,7 @@ libnet_status addr_delete(char *args)
                                 goto FREE_ADDR;
                         }
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
 
         int ret = rtnl_addr_delete(sock, addr, 0);
@@ -1076,6 +1078,7 @@ libnet_status route_add(char *args)
 
         char *str = strdup(args);
         char *token;
+        char *saveptr;
         char nexthop[64]={0};
         char metric[64]={0};
 
@@ -1104,7 +1107,7 @@ libnet_status route_add(char *args)
         }
 
         int ret;
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while( token != NULL) {
                 if(0 == strcmp(token, "-4") || 0 == strcmp(token, "4") ||
                           0 == strcmp(token, "inet")) {
@@ -1128,21 +1131,21 @@ libnet_status route_add(char *args)
                                 goto FREE_ROUTE;
                         }
                 } else if(0 == strcmp(token, "dev")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(nexthop,"dev=");
                                 strcat(nexthop,token);
                                 strcat(nexthop,",");
                         }
                 } else if(0 == strcmp(token, "via")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(nexthop,"via=");
                                 strcat(nexthop,token);
                                 strcat(nexthop,",");
                         }
                 } else if(0 == strcmp(token, "src")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_pref_src(route, token) < 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse src field\n", args);
@@ -1150,7 +1153,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "metric")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_prio(route, token) < 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse metric field\n", args);
@@ -1158,7 +1161,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "mtu")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(metric,"mtu=");
                                 strcat(metric,token);
@@ -1169,7 +1172,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "table")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_table(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse table field\n", args);
@@ -1177,7 +1180,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "proto") || 0 == strcmp(token, "protocol")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_protocol(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse proto field\n", args);
@@ -1185,7 +1188,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "scope")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_scope(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse scope field\n", args);
@@ -1193,7 +1196,7 @@ libnet_status route_add(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "type")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_type(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse type field\n", args);
@@ -1206,7 +1209,7 @@ libnet_status route_add(char *args)
                                 goto FREE_ROUTE;
                         }
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
 
         if (libnet_route_parse_nexthop(route, nexthop, link_cache) != 0) {
@@ -1254,13 +1257,14 @@ libnet_status route_delete(char *args)
 {
         CNL_LOG_INFO("Entering with args: '%s'\n", args);
 
-        static struct nl_sock *sock;
+        struct nl_sock *sock;
         struct nl_cache *link_cache;
         struct nl_cache *route_cache;
         struct rtnl_route *route;
         libnet_status err = CNL_STATUS_FAILURE;
         char *str = strdup(args);
         char *token;
+        char *saveptr;
         char nexthop[64]={0};
         char metric[64]={0};
 
@@ -1295,7 +1299,7 @@ libnet_status route_delete(char *args)
         }
 
         int ret;
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while (token != NULL) {
                 if(0 == strcmp(token, "-4") || 0 == strcmp(token, "4") ||
                           0 == strcmp(token, "inet")) {
@@ -1319,21 +1323,21 @@ libnet_status route_delete(char *args)
                                 goto FREE_ROUTE;
                         }
                 } else if(0 == strcmp(token, "dev")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(nexthop,"dev=");
                                 strcat(nexthop,token);
                                 strcat(nexthop,",");
                         }
                 } else if(0 == strcmp(token, "via")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(nexthop,"via=");
                                 strcat(nexthop,token);
                                 strcat(nexthop,",");
                         }
                 } else if(0 == strcmp(token, "src")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_pref_src(route, token) < 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse src field\n", args);
@@ -1341,7 +1345,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "metric")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_prio(route, token) < 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse metric field\n", args);
@@ -1349,7 +1353,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "mtu")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 strcat(metric,"mtu=");
                                 strcat(metric,token);
@@ -1360,7 +1364,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "table")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_table(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse table field\n", args);
@@ -1368,7 +1372,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "proto") || 0 == strcmp(token, "protocol")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_protocol(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse proto field\n", args);
@@ -1376,7 +1380,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "scope")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_scope(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse scope field\n", args);
@@ -1384,7 +1388,7 @@ libnet_status route_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "type")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_route_parse_type(route, token) != 0) {
                                         CNL_LOG_ERROR("%s: Unable to parse type field\n", args);
@@ -1397,7 +1401,7 @@ libnet_status route_delete(char *args)
                                 goto FREE_ROUTE;
                         }
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
 
         if (strlen(nexthop) > 0) {
@@ -1434,6 +1438,7 @@ libnet_status rule_add(char *args)
 
         char *str = strdup(args);
         char *token;
+        char *saveptr;
 
         struct nl_sock *sock;
         struct rtnl_rule *rule;
@@ -1474,10 +1479,10 @@ libnet_status rule_add(char *args)
 
         rtnl_rule_set_action(rule, RTN_UNICAST);
 
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while( token != NULL) {
                 if(0 == strcmp(token, "from")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse(token, family, &src) != 0) {
                                         CNL_LOG_ERROR("Unable to parse rule src\n");
@@ -1494,7 +1499,7 @@ libnet_status rule_add(char *args)
                                 goto FREE_RULE;
                         }
                 } else if (0 == strcmp(token, "to")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse(token, family, &dst) != 0) {
                                         CNL_LOG_ERROR("Unable to parse rule dst\n");
@@ -1511,7 +1516,7 @@ libnet_status rule_add(char *args)
                                 goto FREE_RULE;
                         }
                 } else if(0 == strcmp(token, "iif")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 ret = rtnl_rule_set_iif(rule, token);
                                 if (ret < 0) {
@@ -1524,7 +1529,7 @@ libnet_status rule_add(char *args)
                                 goto FREE_RULE;
                         }
                 } else if(0 == strcmp(token, "oif")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 ret = rtnl_rule_set_oif(rule, token);
                                 if (ret < 0) {
@@ -1538,7 +1543,7 @@ libnet_status rule_add(char *args)
                         }
                 } else if(0 == strcmp(token, "lookup") ||
                           0 == strcmp(token, "table")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (rtnl_route_read_table_names(
                                             "/etc/iproute2/rt_tables") < 0) {
@@ -1558,7 +1563,7 @@ libnet_status rule_add(char *args)
                                 goto FREE_RULE;
                         }
                 } else if (0 == strcmp(token, "prio")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 rtnl_rule_set_prio(rule, atoi(token));
                         } else {
@@ -1573,7 +1578,7 @@ libnet_status rule_add(char *args)
                         family = AF_INET6;
                         rtnl_rule_set_family(rule, family);
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
 
         ret = rtnl_rule_add(sock, rule, NLM_F_EXCL);
@@ -1618,10 +1623,11 @@ libnet_status rule_delete(char *args)
 
         char *str = strdup(args);
         char *token;
+        char *saveptr;
         int family = AF_UNSPEC;
         int ret = 0;
 
-        static struct nl_sock *sock;
+        struct nl_sock *sock;
         struct nl_cache *rule_cache;
         struct rtnl_rule *rule;
         struct nl_addr *src = NULL;
@@ -1652,10 +1658,10 @@ libnet_status rule_delete(char *args)
                 goto FREE_CACHE;
         }
 
-        token = strtok(str, " ");
+        token = strtok_r(str, " ", &saveptr);
         while( token != NULL) {
                 if(0 == strcmp(token, "from")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse(token, family, &src) != 0) {
                                         CNL_LOG_ERROR("Unable to parse rule src addr\n");
@@ -1669,7 +1675,7 @@ libnet_status rule_delete(char *args)
                                 }
                         }
                 } else if (0 == strcmp(token, "to")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 if (libnet_addr_parse(token, family, &dst) != 0) {
                                         CNL_LOG_ERROR("Unable to parse rule dst addr\n");
@@ -1681,7 +1687,7 @@ libnet_status rule_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "iif")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 ret = rtnl_rule_set_iif(rule, token);
                                 if (ret < 0) {
@@ -1691,7 +1697,7 @@ libnet_status rule_delete(char *args)
                                 }
                         }
                 } else if(0 == strcmp(token, "oif")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 ret = rtnl_rule_set_oif(rule, token);
                                 if (ret < 0) {
@@ -1702,7 +1708,7 @@ libnet_status rule_delete(char *args)
                         }
                 } else if(0 == strcmp(token, "lookup") ||
                           0 == strcmp(token, "table")) {
-                        token = strtok(NULL, " ");
+                        token = strtok_r(NULL, " ", &saveptr);
                         if (token != NULL) {
                                 int tableId = rtnl_route_str2table(token);
                                 if (tableId < 0) {
@@ -1721,7 +1727,7 @@ libnet_status rule_delete(char *args)
                         family = AF_INET6;
                         rtnl_rule_set_family(rule, family);
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ", &saveptr);
         }
         nl_cache_foreach_filter(rule_cache, OBJ_CAST(rule), rule_delete_cb, (void *)sock);
         err = CNL_STATUS_SUCCESS;
