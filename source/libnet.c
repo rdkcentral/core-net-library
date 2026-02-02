@@ -722,7 +722,7 @@ libnet_status interface_set_mac(const char *if_name, char *mac)
                 return CNL_STATUS_FAILURE;
         }
 
-        strcpy(if_req.ifr_name, if_name);
+        snprintf(if_req.ifr_name, sizeof(if_req.ifr_name), "%s", if_name);
         if_req.ifr_hwaddr.sa_family = ARPHRD_ETHER;
 
         if(ioctl(sock, SIOCSIFHWADDR, &if_req) < 0)
