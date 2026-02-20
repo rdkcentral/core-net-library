@@ -23,3 +23,7 @@ libnet_la_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3
 
 libnet_la_includedir = ${includedir}
 libnet_la_include_HEADERS = libnet.h
+
+bin_PROGRAMS = ip_toggle
+ip_toggle_SOURCES = ip_toggle.c
+ip_toggle_LDADD = libnet.la
