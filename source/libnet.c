@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <netlink/route/neighbour.h>
 #include <netlink/route/addr.h>
@@ -106,6 +107,7 @@ libnet_status vlan_create(const char *if_name, int vid)
         libnet_status err = CNL_STATUS_FAILURE;
         char vlan_if_name[32] = {0};
         errno_t rc;
+        print("Test coverity workflow ,%s")
 
         rc = sprintf_s(vlan_if_name, sizeof(vlan_if_name), "%s.%d", if_name,vid);
         ERR_CHK(rc);

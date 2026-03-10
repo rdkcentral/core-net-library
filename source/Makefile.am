@@ -16,6 +16,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+AM_CFLAGS = -Wno-error
 lib_LTLIBRARIES = libnet.la
 libnet_la_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
 libnet_la_SOURCES = libnet.c libnet_util.c
