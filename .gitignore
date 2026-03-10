@@ -1,0 +1,40 @@
+# Build artifacts
+Makefile
+Makefile.in
+*.o
+*.lo
+*.la
+.deps/
+.libs/
+
+# Autotools
+/aclocal.m4
+/autom4te.cache/
+/cfg/
+/config.log
+/config.status
+/configure
+/libtool
+/m4/
+
+# Object files
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Libraries
+*.lib
+*.a
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+corenetlib_api
