@@ -21,6 +21,11 @@ libnet_la_CPPFLAGS = -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include/libnl3/
 libnet_la_SOURCES = libnet.c libnet_util.c
 libnet_la_LDFLAGS = -lnl-route-3 -lnl-3 -lnl-nf-3
 
+if WITH_RDKLOGGER
+libnet_la_CPPFLAGS += -I ${PKG_CONFIG_SYSROOT_DIR}/usr/include
+libnet_la_LDFLAGS  += -lrdkloggers
+endif
+
 libnet_la_includedir = ${includedir}
 libnet_la_include_HEADERS = libnet.h
 

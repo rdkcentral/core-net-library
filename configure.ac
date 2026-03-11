@@ -44,6 +44,27 @@ AM_CONDITIONAL([WITH_GTEST_SUPPORT], [test x$GTEST_SUPPORT_ENABLED = xtrue])
 LT_INIT([enable-shared])
 AC_LANG([C++])
 
+AC_ARG_ENABLE([rdklogger],
+             AS_HELP_STRING([--enable-rdklogger],[enable RDK Logger integration (default is no)]),
+             [
+               case "${enableval}" in
+                yes) RDKLOGGER_ENABLED=true
+                     AC_DEFINE([ENABLE_RDKLOGGER], [1], [Enable RDK Logger])
+                     CFLAGS="$CFLAGS -DENABLE_RDKLOGGER"
+                     CPPFLAGS="$CPPFLAGS -DENABLE_RDKLOGGER"
+                     AC_CHECK_HEADERS([rdk_debug.h], [],
+                         [AC_MSG_ERROR([rdk_debug.h not found; install rdklogger or check PKG_CONFIG_SYSROOT_DIR/usr/include])])
+                     AC_CHECK_LIB([rdkloggers], [rdk_logger_init], [],
+                         [AC_MSG_ERROR([librdkloggers not found; install rdklogger or check PKG_CONFIG_SYSROOT_DIR/usr/lib])])
+                     ;;
+                no)  RDKLOGGER_ENABLED=false ;;
+                 *)  AC_MSG_ERROR([bad value ${enableval} for --enable-rdklogger]) ;;
+               esac
+             ],
+             [RDKLOGGER_ENABLED=false
+              echo "RDK Logger integration is disabled"])
+AM_CONDITIONAL([WITH_RDKLOGGER], [test x$RDKLOGGER_ENABLED = xtrue])
+
 GTEST_ENABLE_FLAG = ""
 
 AC_ARG_ENABLE([gtestapp],

@@ -23,6 +23,16 @@
 extern "C" {
 #endif
 
+/* Module name used in debug.ini: LOG.RDK.CNL */
+#define CNL_RDK_MODULE "LOG.RDK.CNL"
+
+#ifdef ENABLE_RDKLOGGER
+#include <rdk_debug.h>
+#define CNL_LOG_INFO(format, ...)    RDK_LOG(RDK_LOG_INFO,    CNL_RDK_MODULE, "%s:%d " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_ERROR(format, ...)   RDK_LOG(RDK_LOG_ERROR,   CNL_RDK_MODULE, "%s:%d " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_NOTICE(format, ...)  RDK_LOG(RDK_LOG_NOTICE,  CNL_RDK_MODULE, "%s:%d " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define CNL_LOG_WARNING(format, ...) RDK_LOG(RDK_LOG_WARN,    CNL_RDK_MODULE, "%s:%d " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#else
 #define CNL_LOG_INFO(format, ...)     \
                               fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define CNL_LOG_ERROR(format, ...)    \
@@ -31,6 +41,7 @@ extern "C" {
                               fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define CNL_LOG_WARNING(format, ...)  \
                               fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#endif /* ENABLE_RDKLOGGER */
 
 /************** Common helpers ******************/
 
