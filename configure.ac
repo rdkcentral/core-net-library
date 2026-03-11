@@ -25,44 +25,17 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([cfg])
 AM_INIT_AUTOMAKE([subdir-objects foreign no-dist-gzip dist-bzip2 1.9])
 
-GTEST_ENABLE_FLAG = ""
-
-AC_ARG_ENABLE([gtestapp],
-             AS_HELP_STRING([--enable-gtestapp],[enable Gtest support (default is no)]),
-             [
-               case "${enableval}" in
-                yes) GTEST_SUPPORT_ENABLED=true
-                     GTEST_ENABLE_FLAG="-DGTEST_ENABLE"
-                     m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile])]);;
-                no) GTEST_SUPPORT_ENABLED=false AC_MSG_ERROR([Gtest support is disabled]);;
-                 *) AC_MSG_ERROR([bad value ${enableval} for --enable-gtestapp ]);;
-               esac
-             ],
-             [echo "Gtestapp is disabled"])
-AM_CONDITIONAL([WITH_GTEST_SUPPORT], [test x$GTEST_SUPPORT_ENABLED = xtrue])
-
-LT_INIT([enable-shared])
+LT_INIT
 AC_LANG([C++])
 
 AC_ARG_ENABLE([rdklogger],
              AS_HELP_STRING([--enable-rdklogger],[enable RDK Logger integration (default is no)]),
-             [
-               case "${enableval}" in
-                yes) RDKLOGGER_ENABLED=true
-                     AC_DEFINE([ENABLE_RDKLOGGER], [1], [Enable RDK Logger])
-                     CFLAGS="$CFLAGS -DENABLE_RDKLOGGER"
-                     CPPFLAGS="$CPPFLAGS -DENABLE_RDKLOGGER"
-                     AC_CHECK_HEADERS([rdk_debug.h], [],
-                         [AC_MSG_ERROR([rdk_debug.h not found; install rdklogger or check PKG_CONFIG_SYSROOT_DIR/usr/include])])
-                     AC_CHECK_LIB([rdkloggers], [rdk_logger_init], [],
-                         [AC_MSG_ERROR([librdkloggers not found; install rdklogger or check PKG_CONFIG_SYSROOT_DIR/usr/lib])])
-                     ;;
+             [case "${enableval}" in
+                yes) RDKLOGGER_ENABLED=true ;;
                 no)  RDKLOGGER_ENABLED=false ;;
                  *)  AC_MSG_ERROR([bad value ${enableval} for --enable-rdklogger]) ;;
-               esac
-             ],
-             [RDKLOGGER_ENABLED=false
-              echo "RDK Logger integration is disabled"])
+              esac],
+             [RDKLOGGER_ENABLED=false])
 AM_CONDITIONAL([WITH_RDKLOGGER], [test x$RDKLOGGER_ENABLED = xtrue])
 
 GTEST_ENABLE_FLAG = ""
@@ -92,6 +65,7 @@ AC_PROG_MAKE_SET
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h unistd.h])
+
 #PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
 
 AC_CONFIG_FILES([Makefile
