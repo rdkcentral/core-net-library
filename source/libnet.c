@@ -2168,7 +2168,6 @@ struct neighbour_info* init_neighbour_info(void) {
         nei_info->neigh_arr = (struct _neighbour_info*)calloc(nei_info->neigh_capacity, sizeof(struct _neighbour_info));
         if (!nei_info->neigh_arr) {
             CNL_LOG_ERROR("Failed to allocate memory for neighbor array\n");
-            free(nei_info);
             return NULL;
         }
         return nei_info;
@@ -2343,7 +2342,7 @@ void neighbour_free_neigh(struct neighbour_info *neigh_info)
                 neigh_info->neigh_count--;
         }
         free(neigh_info->neigh_arr);
-        free(neigh_info);
+        // free(neigh_info);
 }
 
 /**
@@ -2542,7 +2541,7 @@ libnet_status get_ipv6_address(char *if_name, char *ipv6_addr, size_t addr_len) 
     sk = nl_socket_alloc();
     if (sk == NULL) {
         CNL_LOG_ERROR("Unable to allocate memory for socket");
-        goto FREE_ALLOCATED_ADDR;
+        // goto FREE_ALLOCATED_ADDR;
     }
 
     if (nl_connect(sk, NETLINK_ROUTE) < 0) {
