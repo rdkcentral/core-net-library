@@ -1,4 +1,4 @@
-# Core Net Library Documentation
+# Core Net Library
 
 The Core Net Library (CNL) is a fundamental networking utility library in the RDK-B middleware that provides a comprehensive C API for network interface management, bridge operations, VLAN configuration, and routing table manipulation. This component serves as a critical abstraction layer between RDK-B middleware components and the underlying Linux networking subsystem, utilizing netlink sockets for kernel communication and providing a simplified, safe API for complex networking operations.
 
@@ -13,7 +13,7 @@ graph TD
         Cloud[Cloud Management Platform]
         SNMP[SNMP Management]
     end
-    
+
     subgraph "RDK-B Middleware Layer"
         WanMgr[WAN Manager]
         EthAgent[Ethernet Agent]
@@ -22,7 +22,7 @@ graph TD
         NetworkMgr[Network Manager]
         CoreNetLib[Core Net Library]
     end
-    
+
     subgraph "System Layer"
         NetlinkAPI[Netlink API]
         LinuxKernel[Linux Kernel Networking]
@@ -32,13 +32,13 @@ graph TD
     WebUI -->|Configuration Requests| WanMgr
     Cloud -->|Remote Management| NetworkMgr
     SNMP -->|Status Queries| EthAgent
-    
+
     WanMgr -->|Interface Management| CoreNetLib
     EthAgent -->|Bridge Operations| CoreNetLib
     WiFiAgent -->|VLAN Configuration| CoreNetLib
     VlanMgr -->|VLAN Management| CoreNetLib
     NetworkMgr -->|Route Management| CoreNetLib
-    
+
     CoreNetLib -->|Netlink Messages| NetlinkAPI
     NetlinkAPI -->|System Calls| LinuxKernel
     CoreNetLib -->|HAL Abstractions| NetworkHAL
@@ -47,7 +47,7 @@ graph TD
     classDef component fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
     classDef corelib fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px;
     classDef system fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px;
-    
+
     class WebUI,Cloud,SNMP user;
     class WanMgr,EthAgent,WiFiAgent,VlanMgr,NetworkMgr component;
     class CoreNetLib corelib;
@@ -66,7 +66,7 @@ graph LR
         subgraph "Remote Management Agents"
             ProtocolAgents["Protocol Agents<br/>(TR-069/WebPA/TR-369)"]
         end
-        
+
         subgraph "RDK-B Core Components"
             WANMgr["WAN Manager"]
             EthAgent["Ethernet Agent"]
@@ -74,7 +74,7 @@ graph LR
             VLANMgr["VLAN Manager"]
             CoreNetLib["Core Net Library"]
         end
-        
+
         subgraph "System Layer"
             NetlinkAPI["Netlink API"]
             NetworkHAL["Network HAL"]
@@ -100,7 +100,7 @@ graph LR
     %% Core Net Library to System Layer
     CoreNetLib -->|Netlink Messages| NetlinkAPI
     CoreNetLib -->|HAL Abstractions| NetworkHAL
-    
+
     %% System integration
     NetlinkAPI <-->|Kernel Communication| LinuxKernel
 
@@ -115,7 +115,7 @@ graph LR
     class NetlinkAPI,NetworkHAL,LinuxKernel system;
 ```
 
-**Key Features & Responsibilities**: 
+**Key Features & Responsibilities**:
 
 - **Network Interface Management**: Comprehensive APIs for creating, configuring, and managing network interfaces including setting IP addresses, MAC addresses, MTU, and interface state (UP/DOWN)
 - **Bridge Networking Operations**: Full support for Linux bridge creation, deletion, STP configuration, and dynamic addition/removal of bridge ports for software-defined networking
@@ -123,7 +123,6 @@ graph LR
 - **Routing Table Management**: Advanced routing operations including route addition/deletion, policy routing, rule management, and tunnel configuration for both IPv4 and IPv6
 - **Neighbor Table Operations**: ARP and NDP table management including neighbor entry creation, deletion, and neighbor discovery operations for network connectivity validation
 - **File-based Configuration**: Secure file I/O operations for reading and writing kernel parameters and network configuration files with proper error handling and validation
-
 
 ## Design
 
@@ -141,12 +140,12 @@ flowchart TB
             BridgeMgmt([Bridge Operations<br/>Creation, STP, Port Management])
             VlanMgmt([VLAN Management<br/>802.1Q Tagging/Untagging])
         end
-        
+
         subgraph RoutingAPIs ["Routing & Connectivity APIs"]
             RoutingMgmt([Routing Management<br/>Tables, Policies, Tunnels])
             NeighborMgmt([Neighbor Operations<br/>ARP/NDP Management])
         end
-        
+
         subgraph UtilityAPIs ["Core Utility APIs"]
             FileOps([File Operations<br/>Kernel Parameters, Config Files])
             NetlinkUtils([Netlink Utilities<br/>Socket Management, Error Handling])
@@ -171,7 +170,7 @@ flowchart TB
     classDef routingApi fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
     classDef utilityApi fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px;
     classDef kernel fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
-    
+
     class InterfaceMgmt,BridgeMgmt,VlanMgmt networkApi;
     class RoutingMgmt,NeighborMgmt routingApi;
     class FileOps,NetlinkUtils utilityApi;
@@ -190,7 +189,7 @@ flowchart TD
         FileOps([File Operations])
         NetlinkUtils([Netlink Utilities])
     end
-    
+
     InterfaceMgmt --> NetlinkUtils
     BridgeOps --> NetlinkUtils
     VlanMgmt --> NetlinkUtils
@@ -198,10 +197,10 @@ flowchart TD
     NeighborOps --> NetlinkUtils
     AddrMgmt --> NetlinkUtils
     FileOps --> NetlinkUtils
-    
+
     classDef mgmt fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
     classDef util fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    
+
     class InterfaceMgmt,BridgeOps,VlanMgmt,RoutingMgmt,NeighborOps,AddrMgmt,FileOps mgmt;
     class NetlinkUtils util;
 ```
@@ -210,10 +209,9 @@ flowchart TD
 
 **Build-Time Flags and Configuration:**
 
-| Configure Option | DISTRO Feature | Build Flag | Purpose | Default |
-|------------------|----------------|------------|---------|---------|
-| `--enable-gtestapp` | N/A | `GTEST_ENABLE`, `WITH_GTEST_SUPPORT` | Enable Google Test support for unit testing framework | Disabled |
-| N/A | `safec` | `SAFEC_DUMMY_API` (when disabled) | Enable secure C library integration for memory safety | Enabled if DISTRO supports |
+| Configure Option    | DISTRO Feature | Build Flag                           | Purpose                                               | Default  |
+| ------------------- | -------------- | ------------------------------------ | ----------------------------------------------------- | -------- |
+| `--enable-gtestapp` | N/A            | `GTEST_ENABLE`, `WITH_GTEST_SUPPORT` | Enable Google Test support for unit testing framework | Disabled |
 
 <br>
 
@@ -222,11 +220,11 @@ flowchart TD
 - **RDK-B Components**: No mandatory RDK-B middleware component dependencies as this is a foundational library consumed by other components
 - **HAL Dependencies**: Standard Linux networking interfaces - no specific HAL requirements as the library operates directly with kernel APIs
 - **Systemd Services**: No specific systemd service dependencies - library is loaded as needed by consuming components
-- **Message Bus**: No RBus registration requirements - operates as a static/shared library within calling process
+- **R-BUS**: No R-BUS registration requirements - operates as a static/shared library within calling process
 - **Configuration Files**: No mandatory configuration files - operates using runtime parameters passed through API calls
 - **Startup Order**: Must be available during system initialization as networking components depend on this library for basic operations
 
-**Threading Model** 
+**Threading Model**
 
 The Core Net Library implements a thread-safe library design where each API call is atomic and self-contained. The component does not create or manage its own threads, but rather provides thread-safe functions that can be called from any thread context within consuming applications.
 
@@ -249,19 +247,19 @@ sequenceDiagram
 
     App->>CNL: First API Call (e.g., interface_create)
     Note over CNL: State: Initializing<br/>Allocate socket, setup netlink connection
-    
+
     CNL->>Netlink: Create Netlink Socket
     Netlink-->>CNL: Socket Handle
     Note over CNL: State: Connected → Processing
-    
+
     CNL->>Kernel: Netlink Message (Operation Request)
     Kernel-->>CNL: Operation Response
     Note over CNL: State: Processing → Cleanup
-    
+
     CNL->>CNL: Resource Cleanup & Socket Close
     CNL-->>App: Operation Result (Success/Failure)
     Note over CNL: State: Ready for Next Call
-    
+
     loop Subsequent API Calls
         App->>CNL: API Call
         Note over CNL: State: Processing<br/>Each call is independent and stateless
@@ -327,16 +325,16 @@ sequenceDiagram
 
 The Core Net Library is organized into specialized modules that handle different aspects of network configuration and management. Each module provides a focused set of APIs for specific networking functionality while sharing common utility functions for netlink communication and resource management.
 
-| Module/Class | Description | Key Files |
-|-------------|------------|-----------|
-| **Interface Management** | Handles network interface operations including creation, configuration, IP address management, MAC address setting, MTU configuration, and interface state control (UP/DOWN) | `libnet.c` (interface_* functions), `libnet.h` |
-| **Bridge Operations** | Manages Linux bridge functionality including bridge creation/deletion, STP configuration, bridge port addition/removal, and bridge information retrieval | `libnet.c` (bridge_* functions), `libnet.h` |
-| **VLAN Management** | Provides VLAN tagging and untagging capabilities with support for 802.1Q VLAN creation, deletion, and configuration on network interfaces | `libnet.c` (vlan_* functions), `libnet.h` |
-| **Routing Management** | Handles routing table operations including route addition/deletion, policy routing rules, tunnel configuration, and multi-table routing support | `libnet.c` (route_*, rule_*, tunnel_* functions), `libnet.h` |
-| **Neighbor Operations** | Manages ARP and NDP neighbor table operations including neighbor entry addition/deletion, neighbor discovery, and neighbor state monitoring | `libnet.c` (neighbour_* functions), `libnet.h` |
-| **Address Management** | Provides IP address configuration APIs including address assignment, netmask configuration, broadcast address derivation, and address family support | `libnet.c` (addr_* functions), `libnet.h` |
-| **File Operations** | Secure file I/O utilities for reading and writing kernel parameters, configuration files, and system settings with proper error handling | `libnet.c` (file_read, file_write), `libnet.h` |
-| **Netlink Utilities** | Common netlink socket operations, memory management, cache handling, and error management functions shared across all networking modules | `libnet_util.c`, `libnet_util.h` |
+| Module/Class             | Description                                                                                                                                                                  | Key Files                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Interface Management** | Handles network interface operations including creation, configuration, IP address management, MAC address setting, MTU configuration, and interface state control (UP/DOWN) | `libnet.c` (interface\_\* functions), `libnet.h`                 |
+| **Bridge Operations**    | Manages Linux bridge functionality including bridge creation/deletion, STP configuration, bridge port addition/removal, and bridge information retrieval                     | `libnet.c` (bridge\_\* functions), `libnet.h`                    |
+| **VLAN Management**      | Provides VLAN tagging and untagging capabilities with support for 802.1Q VLAN creation, deletion, and configuration on network interfaces                                    | `libnet.c` (vlan\_\* functions), `libnet.h`                      |
+| **Routing Management**   | Handles routing table operations including route addition/deletion, policy routing rules, tunnel configuration, and multi-table routing support                              | `libnet.c` (route*\*, rule*\_, tunnel\_\_ functions), `libnet.h` |
+| **Neighbor Operations**  | Manages ARP and NDP neighbor table operations including neighbor entry addition/deletion, neighbor discovery, and neighbor state monitoring                                  | `libnet.c` (neighbour\_\* functions), `libnet.h`                 |
+| **Address Management**   | Provides IP address configuration APIs including address assignment, netmask configuration, broadcast address derivation, and address family support                         | `libnet.c` (addr\_\* functions), `libnet.h`                      |
+| **File Operations**      | Secure file I/O utilities for reading and writing kernel parameters, configuration files, and system settings with proper error handling                                     | `libnet.c` (file_read, file_write), `libnet.h`                   |
+| **Netlink Utilities**    | Common netlink socket operations, memory management, cache handling, and error management functions shared across all networking modules                                     | `libnet_util.c`, `libnet_util.h`                                 |
 
 ## Component Interactions
 
@@ -344,17 +342,17 @@ The Core Net Library serves as a foundational networking component that is consu
 
 ### Interaction Matrix
 
-| Target Component/Layer | Interaction Purpose | Key APIs/Endpoints |
-|------------------------|-------------------|------------------|
+| Target Component/Layer          | Interaction Purpose                                                | Key APIs/Endpoints                                                    |
+| ------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | **RDK-B Middleware Components** |
-| WAN Manager | Interface management, routing configuration for WAN connectivity | `interface_up()`, `interface_down()`, `route_add()`, `addr_add()` |
-| Ethernet Agent | Bridge operations, interface configuration for LAN networking | `bridge_create()`, `interface_add_to_bridge()`, `interface_set_mac()` |
-| WiFi Agent | VLAN configuration, bridge port management for wireless networks | `vlan_create()`, `bridge_add_interface()`, `bridge_set_stp()` |
-| VLAN Manager | VLAN interface creation, tagging, and traffic segmentation | `vlan_create()`, `vlan_delete()`, `interface_set_ip()` |
-| Network Manager | IP address management, route table operations for network services | `addr_add()`, `route_add()`, `neighbour_get_list()` |
-| **System & Platform Layers** |
-| Linux Kernel Networking | Direct netlink communication for network stack operations | Netlink socket messages, NETLINK_ROUTE protocol |
-| Filesystem Layer | Kernel parameter access and configuration file management | `/proc/sys/net/*`, `/sys/class/net/*` file operations |
+| WAN Manager                     | Interface management, routing configuration for WAN connectivity   | `interface_up()`, `interface_down()`, `route_add()`, `addr_add()`     |
+| Ethernet Agent                  | Bridge operations, interface configuration for LAN networking      | `bridge_create()`, `interface_add_to_bridge()`, `interface_set_mac()` |
+| WiFi Agent                      | VLAN configuration, bridge port management for wireless networks   | `vlan_create()`, `bridge_add_interface()`, `bridge_set_stp()`         |
+| VLAN Manager                    | VLAN interface creation, tagging, and traffic segmentation         | `vlan_create()`, `vlan_delete()`, `interface_set_ip()`                |
+| Network Manager                 | IP address management, route table operations for network services | `addr_add()`, `route_add()`, `neighbour_get_list()`                   |
+| **System & Platform Layers**    |
+| Linux Kernel Networking         | Direct netlink communication for network stack operations          | Netlink socket messages, NETLINK_ROUTE protocol                       |
+| Filesystem Layer                | Kernel parameter access and configuration file management          | `/proc/sys/net/*`, `/sys/class/net/*` file operations                 |
 
 **Events Published by Core Net Library:**
 
@@ -412,39 +410,38 @@ The Core Net Library operates at a lower level than typical HAL abstractions, di
 
 **Core Linux APIs:**
 
-| Linux API | Purpose | Implementation File |
-|-----------|---------|-------------------|
-| **Netlink Socket API** | Primary interface for kernel networking communication using NETLINK_ROUTE protocol | `libnet.c`, `libnet_util.c` |
-| **File System API** | Reading/writing kernel parameters and network configuration through /proc and /sys | `libnet.c` (file_read, file_write) |
-| **libnl3 Library** | Higher-level netlink abstraction for route, address, and interface management | All networking functions in `libnet.c` |
+| Linux API              | Purpose                                                                            | Implementation File                    |
+| ---------------------- | ---------------------------------------------------------------------------------- | -------------------------------------- |
+| **Netlink Socket API** | Primary interface for kernel networking communication using NETLINK_ROUTE protocol | `libnet.c`, `libnet_util.c`            |
+| **File System API**    | Reading/writing kernel parameters and network configuration through /proc and /sys | `libnet.c` (file_read, file_write)     |
+| **libnl3 Library**     | Higher-level netlink abstraction for route, address, and interface management      | All networking functions in `libnet.c` |
 
 ### Key Implementation Logic
 
 - **Netlink Socket Management**: Core implementation centers around proper netlink socket lifecycle management with consistent patterns across all networking operations
-     - Socket allocation and connection in `libnet_util.c` (libnet_alloc_socket, libnet_connect)
-     - Resource cleanup and error handling in each API function
-  
+  - Socket allocation and connection in `libnet_util.c` (libnet_alloc_socket, libnet_connect)
+  - Resource cleanup and error handling in each API function
 - **Resource Management**: Comprehensive resource management ensures no memory leaks or socket handle exhaustion
-     - Automatic cleanup on both success and error paths
-     - Cache management for interface and route information
-     - Proper reference counting for netlink objects
+  - Automatic cleanup on both success and error paths
+  - Cache management for interface and route information
+  - Proper reference counting for netlink objects
 
 - **Error Handling Strategy**: Robust error detection and reporting with detailed logging for debugging network configuration issues
-     - Netlink error code translation to CNL status codes
-     - Comprehensive logging with CNL_LOG_* macros for different severity levels
-     - Graceful degradation and resource cleanup on failures
+  - Netlink error code translation to CNL status codes
+  - Comprehensive logging with CNL*LOG*\* macros for different severity levels
+  - Graceful degradation and resource cleanup on failures
 
 - **Thread Safety Implementation**: Thread-safe design through stateless operation and proper resource isolation
-     - Each API call manages independent socket and cache resources
-     - No shared state between function calls
-     - Atomic operations with complete setup and cleanup cycles
+  - Each API call manages independent socket and cache resources
+  - No shared state between function calls
+  - Atomic operations with complete setup and cleanup cycles
 
 ### Key Configuration Files
 
 The Core Net Library does not require or manage specific configuration files. It operates using runtime parameters and provides utilities for reading and writing system configuration files as needed by consuming components.
 
-| Configuration File | Purpose | Override Mechanisms |
-|--------------------|---------|--------------------|
-| **Runtime Parameters** | All configuration passed via function parameters | Environment variables in calling applications |
-| **/proc/sys/net/*** | Kernel networking parameters accessible via file_read/file_write | Direct file operations with proper validation |
-| **/sys/class/net/*** | Network interface attributes and statistics | Interface-specific file operations through library APIs |
+| Configuration File     | Purpose                                                          | Override Mechanisms                                     |
+| ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
+| **Runtime Parameters** | All configuration passed via function parameters                 | Environment variables in calling applications           |
+| **/proc/sys/net/\***   | Kernel networking parameters accessible via file_read/file_write | Direct file operations with proper validation           |
+| **/sys/class/net/\***  | Network interface attributes and statistics                      | Interface-specific file operations through library APIs |
