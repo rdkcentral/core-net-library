@@ -17,6 +17,7 @@
  */
 
 #include <errno.h>
+#include <string.h>
 
 #include <netlink/route/neighbour.h>
 #include <netlink/route/link.h>
@@ -338,6 +339,10 @@ struct nl_cache *libnet_route_alloc_cache(struct nl_sock *socket, int flags)
         return cache;
 }
 
+/*
+ * Convert addr_str to a netlink address object using the route's address
+ * family, then set it as the route destination via rtnl_route_set_dst.
+ */
 int libnet_route_parse_dst(struct rtnl_route *rt_route, char *args)
 {
         struct nl_addr *addr;
@@ -360,28 +365,192 @@ FREE_ADDR:
         return err;
 }
 
-int libnet_route_parse_src(struct rtnl_route *rt_route, char *args)
+/*
+ * Parse a comma-separated "name=value" options string, resolve each metric
+ * name to its RTAX_* kernel constant via an explicit lookup table, convert
+ * the value with strtoul, then apply it via rtnl_route_set_metric.
+ */
+int libnet_route_parse_metric(struct rtnl_route *route, char *options)
 {
-        struct nl_addr *addr;
-        int err = 0;
+        /*
+         * Map metric names to their explicit RTAX_* kernel constants.
+         * Using named constants decouples the lookup from any assumed
+         * positional ordering and clearly documents the kernel origin.
+         */
+        static const struct {
+                const char *name;
+                int         rtax_id;
+        } metric_map[] = {
+                { "lock",        RTAX_LOCK        },
+                { "mtu",         RTAX_MTU         },
+                { "window",      RTAX_WINDOW      },
+                { "rtt",         RTAX_RTT         },
+                { "rttvar",      RTAX_RTTVAR      },
+                { "sstresh",     RTAX_SSTHRESH    },
+                { "cwnd",        RTAX_CWND        },
+                { "advmss",      RTAX_ADVMSS      },
+                { "reordering",  RTAX_REORDERING  },
+                { "hoplimit",    RTAX_HOPLIMIT    },
+                { "initcwnd",    RTAX_INITCWND    },
+                { "features",    RTAX_FEATURES    },
+        };
+        static const size_t metric_map_len = sizeof(metric_map) / sizeof(metric_map[0]);
 
-        err = libnet_addr_parse(args, rtnl_route_get_family(rt_route), &addr);
-        if (err != 0) {
-                return err;
+        char *saveptr = NULL;
+        char *token;
+        int ret = 0;
+
+        for (token = strtok_r(options, ",", &saveptr);
+             token != NULL;
+             token = strtok_r(NULL, ",", &saveptr)) {
+
+                const char *metric_name;
+                const char *metric_str;
+                char *parse_tail;
+                unsigned long metric_val;
+                char *eq;
+                size_t i;
+
+                eq = strchr(token, '=');
+                if (eq == NULL) {
+                        CNL_LOG_ERROR("Metric token \"%s\" is not in name=value form\n", token);
+                        return -EINVAL;
+                }
+                *eq = '\0';
+                metric_name = token;
+                metric_str  = eq + 1;
+
+                for (i = 0; i < metric_map_len; i++) {
+                        if (strcmp(metric_name, metric_map[i].name) == 0)
+                                break;
+                }
+                if (i == metric_map_len) {
+                        CNL_LOG_ERROR("Metric name \"%s\" is not recognised\n", metric_name);
+                        return -EINVAL;
+                }
+
+                if (*metric_str == '\0') {
+                        CNL_LOG_ERROR("Metric \"%s\" has no value\n", metric_name);
+                        return -EINVAL;
+                }
+
+                metric_val = strtoul(metric_str, &parse_tail, 0);
+                if (parse_tail == metric_str) {
+                        CNL_LOG_ERROR("Metric \"%s\" value \"%s\" is not a valid integer\n",
+                                metric_name, metric_str);
+                        return -EINVAL;
+                }
+
+                ret = rtnl_route_set_metric(route, metric_map[i].rtax_id, metric_val);
+                if (ret < 0) {
+                        CNL_LOG_ERROR("Failed to set metric \"%s\": %s (err=%d)\n",
+                                metric_name, nl_geterror(ret), ret);
+                        return ret;
+                }
         }
-
-        err = rtnl_route_set_src(rt_route, addr);
-        if (err < 0) {
-                CNL_LOG_ERROR("Failed to set source address '%s': %s (err=%d)\n",
-                        args, nl_geterror(err), err);
-                goto FREE_ADDR;
-        }
-
-FREE_ADDR:
-        nl_addr_put(addr);
-        return err;
+        return ret;
 }
 
+/*
+ * Parse subopt tokens ("dev", "via", "weight", "as") from subopts, resolve
+ * each to a nexthop attribute (interface index, gateway address, weight, or
+ * new-destination address), then attach the nexthop to rt_route via
+ * rtnl_route_add_nexthop.
+ */
+int libnet_route_parse_nexthop(struct rtnl_route *rt_route, char *subopts,
+                               struct nl_cache *link_cache)
+{
+        enum {
+                NEXTHOP_DEV,
+                NEXTHOP_VIA,
+                NEXTHOP_WEIGHT,
+                NEXTHOP_AS,
+        };
+        static char *const tokens[] = {
+                "dev",
+                "via",
+                "weight",
+                "as",
+                NULL,
+        };
+        unsigned long weight_val;
+        struct rtnl_nexthop *nexthop;
+        char *tok_val;
+        char *scan_end;
+        struct nl_addr *nh_addr;
+        int link_idx;
+        int status = 0;
+
+        if (!(nexthop = rtnl_route_nh_alloc())) {
+                CNL_LOG_ERROR("Out of memory\n");
+                return ENOMEM;
+        }
+
+        while (*subopts != '\0') {
+                int ret = getsubopt(&subopts, tokens, &tok_val);
+                if (ret == -1) {
+                        CNL_LOG_ERROR("Unknown nexthop token %s\n", tok_val);
+                        return EINVAL;
+                }
+
+                if (tok_val == NULL) {
+                        CNL_LOG_ERROR("Missing argument to option %s\n", tokens[ret]);
+                        return EINVAL;
+                }
+
+                switch (ret) {
+                case NEXTHOP_DEV:
+                        if (!(link_idx = rtnl_link_name2i(link_cache, tok_val))) {
+                                CNL_LOG_ERROR("Link device '%s' does not exist\n", tok_val);
+                                return ENOENT;
+                        }
+
+                        rtnl_route_nh_set_ifindex(nexthop, link_idx);
+                        break;
+
+                case NEXTHOP_VIA:
+                        if (rtnl_route_get_family(rt_route) == AF_MPLS) {
+                                if ((status = libnet_addr_parse(tok_val, 0, &nh_addr)) != 0) {
+                                        return status;
+                                }
+                                rtnl_route_nh_set_via(nexthop, nh_addr);
+                        } else {
+                                if ((status = libnet_addr_parse(tok_val, rtnl_route_get_family(rt_route), &nh_addr)) != 0) {
+                                        return status;
+                                }
+                                rtnl_route_nh_set_gateway(nexthop, nh_addr);
+                        }
+                        nl_addr_put(nh_addr);
+                        break;
+
+                case NEXTHOP_AS:
+                        if ((status = libnet_addr_parse(tok_val, rtnl_route_get_family(rt_route), &nh_addr)) != 0) {
+                                return status;
+                        }
+                        rtnl_route_nh_set_newdst(nexthop, nh_addr);
+                        nl_addr_put(nh_addr);
+                        break;
+
+                case NEXTHOP_WEIGHT:
+                        weight_val = strtoul(tok_val, &scan_end, 0);
+                        if (scan_end == tok_val) {
+                                CNL_LOG_ERROR("Invalid weight %s, not numeric\n", tok_val);
+                                return EINVAL;
+                        }
+                        rtnl_route_nh_set_weight(nexthop, weight_val);
+                        break;
+                }
+        }
+
+        rtnl_route_add_nexthop(rt_route, nexthop);
+        return status;
+}
+
+/*
+ * Convert addr_str to a netlink address object using the route's address
+ * family, then set it as the preferred source address via
+ * rtnl_route_set_pref_src.
+ */
 int libnet_route_parse_pref_src(struct rtnl_route *rt_route, char *args)
 {
         struct nl_addr *addr;
@@ -404,230 +573,140 @@ FREE_ADDR:
         return err;
 }
 
-int libnet_route_parse_metric(struct rtnl_route *route, char *options)
+/*
+ * Convert input_str to an unsigned integer with strtoul, then set it as the
+ * route priority (metric) via rtnl_route_set_priority.
+ */
+int libnet_route_parse_prio(struct rtnl_route *route, char *input_str)
 {
-        /* follow strict equal order to RTAX_* */
-        static char *const metrics[] = {
-                "unspec",
-                "lock",
-                "mtu",
-                "window",
-                "rtt",
-                "rttvar",
-                "sstresh",
-                "cwnd",
-                "advmss",
-                "reordering",
-                "hoplimit",
-                "initcwnd",
-                "features",
-                NULL,
-        };
-        unsigned long value;
-        char *argument;
-        char *end;
-        int index = 0;
+        unsigned long numeric_val;
+        char *scan_end;
 
-        while (*options != '\0') {
-                index = getsubopt(&options, metrics, &argument);
-                if (index == -1) {
-                        CNL_LOG_ERROR("Unrecognized metric token \"%s\"\n",
-                                argument ? argument : "NULL");
-                        return EINVAL;
-                }
-
-                if (argument == NULL) {
-                        CNL_LOG_ERROR("Metric \"%s\", no value provided\n", metrics[index]);
-                        return EINVAL;
-                }
-
-                value = strtoul(argument, &end, 0);
-                if (end == argument) {
-                        CNL_LOG_ERROR("Metric \"%s\", value is not numeric\n", metrics[index]);
-                        return EINVAL;
-                }
-
-                if ((index = rtnl_route_set_metric(route, index, value)) < 0) {
-                        CNL_LOG_ERROR("Failed to set metric \"%s\": %s\n",
-                                metrics[index], nl_geterror(index));
-                        break;
-                }
-        }
-        return index;
-}
-
-int libnet_route_parse_nexthop(struct rtnl_route *rt_route, char *subopts,
-                               struct nl_cache *link_cache)
-{
-        enum {
-                NEXTHOP_DEV,
-                NEXTHOP_VIA,
-                NEXTHOP_WEIGHT,
-                NEXTHOP_AS,
-        };
-        static char *const tokens[] = {
-                "dev",
-                "via",
-                "weight",
-                "as",
-                NULL,
-        };
-        unsigned long ulval;
-        struct rtnl_nexthop *nexthop;
-        char *args;
-        char *end_ptr;
-        struct nl_addr *address;
-        int int_val;
-        int err_val = 0;
-
-        if (!(nexthop = rtnl_route_nh_alloc())) {
-                CNL_LOG_ERROR("Out of memory\n");
-                return ENOMEM;
-        }
-
-        while (*subopts != '\0') {
-                int ret = getsubopt(&subopts, tokens, &args);
-                if (ret == -1) {
-                        CNL_LOG_ERROR("Unknown nexthop token %s\n", args);
-                        return EINVAL;
-                }
-
-                if (args == NULL) {
-                        CNL_LOG_ERROR("Missing argument to option %s\n", tokens[ret]);
-                        return EINVAL;
-                }
-
-                switch (ret) {
-                case NEXTHOP_DEV:
-                        if (!(int_val = rtnl_link_name2i(link_cache, args))) {
-                                CNL_LOG_ERROR("Link device '%s' does not exist\n", args);
-                                return ENOENT;
-                        }
-
-                        rtnl_route_nh_set_ifindex(nexthop, int_val);
-                        break;
-
-                case NEXTHOP_VIA:
-                        if (rtnl_route_get_family(rt_route) == AF_MPLS) {
-                                if ((err_val = libnet_addr_parse(args, 0, &address)) != 0) {
-                                        return err_val;
-                                }
-                                rtnl_route_nh_set_via(nexthop, address);
-                        } else {
-                                if ((err_val = libnet_addr_parse(args, rtnl_route_get_family(rt_route), &address)) != 0) {
-                                        return err_val;
-                                }
-                                rtnl_route_nh_set_gateway(nexthop, address);
-                        }
-                        nl_addr_put(address);
-                        break;
-
-                case NEXTHOP_AS:
-                        if ((err_val = libnet_addr_parse(args, rtnl_route_get_family(rt_route), &address)) != 0) {
-                                return err_val;
-                        }
-                        rtnl_route_nh_set_newdst(nexthop, address);
-                        nl_addr_put(address);
-                        break;
-
-                case NEXTHOP_WEIGHT:
-                        ulval = strtoul(args, &end_ptr, 0);
-                        if (end_ptr == args) {
-                                CNL_LOG_ERROR("Invalid weight %s, not numeric\n", args);
-                                return EINVAL;
-                        }
-                        rtnl_route_nh_set_weight(nexthop, ulval);
-                        break;
-                }
-        }
-
-        rtnl_route_add_nexthop(rt_route, nexthop);
-        return err_val;
-}
-
-int libnet_route_parse_table(struct rtnl_route *rt_route, char *args)
-{
-        unsigned long lval;
-        char *endptr;
-        int table;
-        int err = 0;
-
-        lval = strtoul(args, &endptr, 0);
-        if (endptr == args) {
-                table = rtnl_route_str2table(args);
-                if (table < 0) {
-                        CNL_LOG_ERROR("Unknown table name %s\n", args);
-                        return EINVAL;
-                }
-        }
-        else {
-                table = lval;
-        }
-
-        rtnl_route_set_table(rt_route, table);
-        return 0;
-}
-
-int libnet_route_parse_prio(struct rtnl_route *route, char *arg)
-{
-        unsigned long lval;
-        char *end_ptr;
-
-        lval = strtoul(arg, &end_ptr, 0);
-        if (end_ptr == arg) {
-                CNL_LOG_ERROR("Invalid priority value, not numeric\n");
+        numeric_val = strtoul(input_str, &scan_end, 0);
+        if (scan_end == input_str) {
+                CNL_LOG_ERROR("Priority must be a valid decimal or hex integer\n");
                 return -1;
         }
-        rtnl_route_set_priority(route, lval);
+        rtnl_route_set_priority(route, numeric_val);
         return 0;
 }
 
-int libnet_route_parse_scope(struct rtnl_route *route, char *arg)
+/*
+ * Try to parse input_str first as a decimal/hex integer with strtoul; if that
+ * fails, resolve it by name via rtnl_route_str2proto.  Then set the routing
+ * protocol on the route via rtnl_route_set_protocol.
+ */
+int libnet_route_parse_protocol(struct rtnl_route *route, char *input_str)
 {
-        int ival;
+        unsigned long numeric_val;
+        char *scan_end;
+        int protocol_id;
 
-        if ((ival = rtnl_str2scope(arg)) < 0) {
-                CNL_LOG_ERROR("Unknown routing scope \"%s\": %s (err=%d)\n",
-                        arg, nl_geterror(ival), ival);
-                return -1;
-        }
-        rtnl_route_set_scope(route, ival);
-        return 0;
-}
-
-int libnet_route_parse_protocol(struct rtnl_route *route, char *arg)
-{
-        unsigned long lval;
-        char *end_ptr;
-        int proto;
-
-        lval = strtoul(arg, &end_ptr, 0);
-        if (end_ptr == arg) {
-                if ((proto = rtnl_route_str2proto(arg)) < 0) {
-                        CNL_LOG_ERROR("Unknown routing protocol name \"%s\"\n", arg);
+        numeric_val = strtoul(input_str, &scan_end, 0);
+        if (scan_end == input_str) {
+                if ((protocol_id = rtnl_route_str2proto(input_str)) < 0) {
+                        CNL_LOG_ERROR("Routing protocol \"%s\" is not known to the kernel\n",
+                                input_str);
                         return -1;
                 }
         }
         else {
-                proto = lval;
+                protocol_id = numeric_val;
         }
 
-        rtnl_route_set_protocol(route, proto);
+        rtnl_route_set_protocol(route, protocol_id);
         return 0;
 }
 
-int libnet_route_parse_type(struct rtnl_route *route, char *arg)
+/*
+ * Resolve input_str to a kernel routing scope constant via rtnl_str2scope,
+ * then apply it to the route via rtnl_route_set_scope.
+ */
+int libnet_route_parse_scope(struct rtnl_route *route, char *input_str)
 {
-        int ival;
+        int result_code;
 
-        if ((ival = nl_str2rtntype(arg)) < 0)
-                CNL_LOG_ERROR("Unknown routing type \"%s\": %s (err=%d)\n",
-                        arg, nl_geterror(ival), ival);
+        if ((result_code = rtnl_str2scope(input_str)) < 0) {
+                CNL_LOG_ERROR("Routing scope identifier \"%s\" could not be resolved: %s (err=%d)\n",
+                        input_str, nl_geterror(result_code), result_code);
+                return -1;
+        }
+        rtnl_route_set_scope(route, result_code);
+        return 0;
+}
 
-        if ((ival = rtnl_route_set_type(route, ival)) < 0)
-                CNL_LOG_ERROR("Unable to set routing type: %s (err=%d)\n",
-                        nl_geterror(ival), ival);
-        return ival;
+/*
+ * Convert addr_str to a netlink address object using the route's address
+ * family, then set it as the route source via rtnl_route_set_src.
+ */
+int libnet_route_parse_src(struct rtnl_route *rt_route, char *args)
+{
+        struct nl_addr *addr;
+        int err = 0;
+
+        err = libnet_addr_parse(args, rtnl_route_get_family(rt_route), &addr);
+        if (err != 0) {
+                return err;
+        }
+
+        err = rtnl_route_set_src(rt_route, addr);
+        if (err < 0) {
+                CNL_LOG_ERROR("Failed to set source address '%s': %s (err=%d)\n",
+                        args, nl_geterror(err), err);
+                goto FREE_ADDR;
+        }
+
+FREE_ADDR:
+        nl_addr_put(addr);
+        return err;
+}
+
+/*
+ * Try to parse input_str first as a decimal/hex integer with strtoul; if that
+ * fails, resolve it by name via rtnl_route_str2table.  Then set the routing
+ * table on the route via rtnl_route_set_table.
+ */
+int libnet_route_parse_table(struct rtnl_route *rt_route, char *input_str)
+{
+        unsigned long numeric_val;
+        char *scan_end;
+        int table_id;
+        int err = 0;
+
+        numeric_val = strtoul(input_str, &scan_end, 0);
+        if (scan_end == input_str) {
+                table_id = rtnl_route_str2table(input_str);
+                if (table_id < 0) {
+                        CNL_LOG_ERROR("Unknown table name %s\n", input_str);
+                        return EINVAL;
+                }
+        }
+        else {
+                table_id = numeric_val;
+        }
+
+        rtnl_route_set_table(rt_route, table_id);
+        return err;
+}
+
+/*
+ * Resolve input_str to a kernel route type constant via nl_str2rtntype,
+ * then apply it to the route via rtnl_route_set_type.
+ */
+int libnet_route_parse_type(struct rtnl_route *route, char *input_str)
+{
+        int result_code;
+
+        if ((result_code = nl_str2rtntype(input_str)) < 0) {
+                CNL_LOG_ERROR("Route type \"%s\" is not a recognised kernel type: %s (err=%d)\n",
+                        input_str, nl_geterror(result_code), result_code);
+        }
+
+        if ((result_code = rtnl_route_set_type(route, result_code)) < 0) {
+                CNL_LOG_ERROR("Setting the route type failed: %s (err=%d)\n",
+                        nl_geterror(result_code), result_code);
+        }
+        return result_code;
 }
 
 /************** Rule helpers ******************/

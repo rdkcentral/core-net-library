@@ -84,26 +84,26 @@ struct rtnl_route *libnet_route_alloc(void);
 
 struct nl_cache *libnet_route_alloc_cache(struct nl_sock *sk, int flags);
 
-int libnet_route_parse_dst(struct rtnl_route *route, char *arg);
+int libnet_route_parse_dst(struct rtnl_route *route, char *args);
 
-int libnet_route_parse_src(struct rtnl_route *route, char *arg);
-
-int libnet_route_parse_pref_src(struct rtnl_route *route, char *arg);
-
-int libnet_route_parse_metric(struct rtnl_route *route, char *subopts);
+int libnet_route_parse_metric(struct rtnl_route *route, char *options);
 
 int libnet_route_parse_nexthop(struct rtnl_route *route, char *subopts,
                    struct nl_cache *link_cache);
 
-int libnet_route_parse_table(struct rtnl_route *route, char *arg);
+int libnet_route_parse_pref_src(struct rtnl_route *route, char *args);
 
-int libnet_route_parse_prio(struct rtnl_route *route, char *arg);
+int libnet_route_parse_prio(struct rtnl_route *route, char *input_str);
 
-int libnet_route_parse_scope(struct rtnl_route *route, char *arg);
+int libnet_route_parse_protocol(struct rtnl_route *route, char *input_str);
 
-int libnet_route_parse_protocol(struct rtnl_route *route, char *arg);
+int libnet_route_parse_scope(struct rtnl_route *route, char *input_str);
 
-int libnet_route_parse_type(struct rtnl_route *route, char *arg);
+int libnet_route_parse_src(struct rtnl_route *route, char *args);
+
+int libnet_route_parse_table(struct rtnl_route *route, char *input_str);
+
+int libnet_route_parse_type(struct rtnl_route *route, char *input_str);
 
 /************** Rule helpers ******************/
 
