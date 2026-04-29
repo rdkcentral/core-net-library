@@ -879,8 +879,9 @@ int handle_interface_get_ip(int argc, char *argv[]) {
 
         // Validation: check if IP is present in ifconfig output
         char validation_command[256];
+
         snprintf(validation_command, sizeof(validation_command),
-                 "ifconfig %s | grep 'inet addr:' | awk '{print $2}' | cut -d: -f2", if_name);
+                 "ip -4 addr show %s | awk '/inet / {print $2}' | cut -d/ -f1", if_name);
 
         char output[128] = {0};
         if (execute_command(validation_command, output, sizeof(output)) != 0) {
@@ -895,14 +896,14 @@ int handle_interface_get_ip(int argc, char *argv[]) {
         if (newline) *newline = '\0';
 
         if (strcmp(ip, output) == 0 && strlen(ip) > 0) {
-            snprintf(log_msg, sizeof(log_msg), "PASS: Validation successful. IP %s is present in ifconfig output for %s.", ip, if_name);
+            snprintf(log_msg, sizeof(log_msg), "PASS: Validation successful. IP %s is present in ip command output for %s.", ip, if_name);
             log_to_file(log_msg);
-            printf("PASS: Validation successful. IP %s is present in ifconfig output for %s.\n", ip, if_name);
+            printf("PASS: Validation successful. IP %s is present in ip command output for %s.\n", ip, if_name);
             return 0;
         } else {
-            snprintf(log_msg, sizeof(log_msg), "FAIL: Validation failed. API IP (%s) does not match ifconfig output (%s) for %s.", ip, output, if_name);
+            snprintf(log_msg, sizeof(log_msg), "FAIL: Validation failed. API IP (%s) does not match ip command output (%s) for %s.", ip, output, if_name);
             log_to_file(log_msg);
-            printf("FAIL: Validation failed. API IP (%s) does not match ifconfig output (%s) for %s.\n", ip, output, if_name);
+            printf("FAIL: Validation failed. API IP (%s) does not match ip command output (%s) for %s.\n", ip, output, if_name);
             return -1;
         }
     } else {
@@ -1558,23 +1559,50 @@ int handle_interface_get_stats(int argc, char *argv[]) {
 }
 
 int handle_neighbour_get_list(int argc, char *argv[]) {
-    struct neighbour_info neigh_info = {0};
-    char mac[18] = {0}; // Placeholder for MAC address
-    char if_name[64] = {0}; // Placeholder for interface name
+    if (argc > 4) {
+        printf("Usage: neighbour_get_list [<mac>] [<if_name>]\n");
+        return -1;
+    }
+    struct neighbour_info *neigh_info = init_neighbour_info();
+    if(neigh_info == NULL) {
+        printf("Failed to initialize neighbour info structure.\n");
+        return -1;
+    }
+
+    char *mac = NULL; // Placeholder for MAC address
+    char *if_name = NULL; // Placeholder for interface name
+ 
     int af_filter = AF_UNSPEC; // Use AF_UNSPEC to include all address families
-    if (neighbour_get_list(&neigh_info, mac, if_name, af_filter) == CNL_STATUS_SUCCESS) {
-        printf("Neighbour list:\n");
-        for (int i = 0; i < neigh_info.neigh_count; i++) {
-            printf("  Local: %s, MAC: %s, Interface: %s, State: %d\n",
-                   neigh_info.neigh_arr[i].local,
-                   neigh_info.neigh_arr[i].mac,
-                   neigh_info.neigh_arr[i].ifname,
-                   neigh_info.neigh_arr[i].state);
+
+    if (argc >= 3 && argv[2] && strlen(argv[2]) > 0) {
+        mac = argv[2];  
+    }
+
+    if (argc == 4 && argv[3] && strlen(argv[3]) > 0) {
+        if_name = argv[3];
+    }
+    
+    if (neighbour_get_list(neigh_info, mac, if_name, af_filter) == CNL_STATUS_SUCCESS) {
+
+        if( neigh_info->neigh_count == 0) {
+            printf("No neighbour entries found.\n");
+            neighbour_free_neigh(neigh_info);
+            return 0;
         }
-        neighbour_free_neigh(&neigh_info);
+
+        printf("Neighbour list:\n");
+        for (int i = 0; i < neigh_info->neigh_count; i++) {
+            printf("  Local: %s, MAC: %s, Interface: %s, State: %d\n",
+                   neigh_info->neigh_arr[i].local,
+                   neigh_info->neigh_arr[i].mac,
+                   neigh_info->neigh_arr[i].ifname,
+                   neigh_info->neigh_arr[i].state);
+        }
+        neighbour_free_neigh(neigh_info);
         return 0;
     } else {
         printf("Failed to get neighbour list.\n");
+        neighbour_free_neigh(neigh_info);
         return -1;
     }
 }
@@ -2083,7 +2111,7 @@ api_entry_t api_table[] = {
     {"interface_up", "interface_up <if_name>", handle_interface_up},
     {"neighbour_delete", "neighbour_delete <if_name> <ip>", handle_neighbour_delete},
     {"neighbour_free_neigh", "neighbour_free_neigh", handle_neighbour_free_neigh},
-    {"neighbour_get_list", "neighbour_get_list", handle_neighbour_get_list},
+    {"neighbour_get_list", "neighbour_get_list [<mac>] [<if_name>]", handle_neighbour_get_list},
     {"route_add", "route_add \"<args>\"", handle_route_add},
     {"route_delete", "route_delete \"<args>\"", handle_route_delete},
     {"rule_add", "rule_add \"<args>\"", handle_rule_add},
@@ -2104,15 +2132,18 @@ void print_usage() {
     printf("\nType 'corenetlib_api <API_NAME> help' for detailed usage of a specific API.\n");
 }
 
-void print_dynamic_helper(const char *api_name) {
+
+
+static api_entry_t *find_api_entry(const char *api_name) {
+    if (!api_name) return NULL;
     for (int i = 0; api_table[i].name != NULL; i++) {
         if (strcmp(api_name, api_table[i].name) == 0) {
-            printf("Helper: %s\n", api_table[i].usage);
-            return;
+            return &api_table[i];
         }
     }
     printf("Unknown API: %s\n", api_name);
     printf("Use 'corenetlib_api help' to see the list of available APIs.\n");
+    return NULL;
 }
 
 // Start of main function and related logic
@@ -2123,26 +2154,25 @@ int main(int argc, char *argv[]) {
     }
 
     const char *api_name = argv[1];
+    api_entry_t *api_entry = find_api_entry(api_name);
 
-    // Check if the user provided only the API name without arguments
-    if (argc == 2) {
-        print_dynamic_helper(api_name);
+    if (!api_entry) {
+        return -1;
+    }
+
+    // Check if any explicit API help 
+    if ((argc >= 3 && strcmp(argv[2], "help") == 0)){
+        printf("Helper : %s\n", api_entry->usage);
         return 0;
     }
 
-    for (int i = 0; api_table[i].name != NULL; i++) {
-        if (strcmp(api_name, api_table[i].name) == 0) {
-            int result = api_table[i].handler(argc, argv);
-            if (result == 0) {
-                printf("Command '%s' executed successfully.\n", api_name);
-            } else {
-                printf("Command '%s' failed.\n", api_name);
-            }
-            return result;
-        }
+    // Single execution path
+    int result = api_entry->handler(argc, argv);
+    if (result == 0) {
+        printf("Command '%s' executed successfully.\n", api_name);
+    } else {
+        printf("Command '%s' failed.\n", api_name);
     }
-
-    printf("Unknown API: %s\n", api_name);
-    print_usage();
-    return -1;
+    return result;
+    
 }
