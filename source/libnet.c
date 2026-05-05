@@ -40,6 +40,28 @@ struct neighbour_cb_data {
         int af_filter;                     // Address family filter: 0 for no filter, or AF_INET/AF_INET6.
     };
 
+FILE *libnet_flog = NULL;
+
+/**
+ * set_log_fd
+ * @flog: file descriptor to use
+ *
+ * Set file descriptor for log messages
+ */
+libnet_status set_log_fd(FILE *flog)
+{
+    if (flog == NULL)
+    {
+            CNL_LOG_ERROR("Unable to set log fd to NULL\n");
+            return CNL_STATUS_FAILURE;
+    }
+
+    libnet_flog = flog;
+    CNL_LOG_INFO("netlib log fd set successfully\n");
+
+    return CNL_STATUS_SUCCESS;
+}
+
 /**
  * file_write
  * @file_name: File name to write
