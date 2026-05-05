@@ -101,6 +101,14 @@ struct callback_data {
 };
 
 /**
+ * set_log_fd
+ * @flog: file descriptor
+ *
+ * Set file descriptor for log messages
+ */
+libnet_status set_log_fd(FILE *flog);
+
+/**
  * file_write
  * @file_name: File name to write
  * @buf: write buffer

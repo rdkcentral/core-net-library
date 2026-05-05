@@ -23,14 +23,20 @@
 extern "C" {
 #endif
 
+/* stderr by default */
+extern FILE *libnet_flog;
+static inline FILE *get_flog(void) {
+    return libnet_flog ? libnet_flog : stderr;
+}
+
 #define CNL_LOG_INFO(format, ...)     \
-                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+                              fprintf (get_flog(), "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define CNL_LOG_ERROR(format, ...)    \
-                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+                              fprintf (get_flog(), "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define CNL_LOG_NOTICE(format, ...)   \
-                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+                              fprintf (get_flog(), "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define CNL_LOG_WARNING(format, ...)  \
-                              fprintf (stderr, "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+                              fprintf (get_flog(), "%s:%d "format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 /************** Common helpers ******************/
 
