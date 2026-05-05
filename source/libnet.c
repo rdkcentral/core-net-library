@@ -40,6 +40,28 @@ struct neighbour_cb_data {
         int af_filter;                     // Address family filter: 0 for no filter, or AF_INET/AF_INET6.
     };
 
+FILE *libnet_flog = NULL;
+
+/**
+ * set_log_fd
+ * @flog: file descriptor to use
+ *
+ * Set file descriptor for log messages
+ */
+libnet_status set_log_fd(FILE *flog)
+{
+    if (flog == NULL)
+    {
+            CNL_LOG_ERROR("Unable to set log fd to NULL\n");
+            return CNL_STATUS_FAILURE;
+    }
+
+    libnet_flog = flog;
+    CNL_LOG_INFO("netlib log fd set successfully\n");
+
+    return CNL_STATUS_SUCCESS;
+}
+
 /**
  * file_write
  * @file_name: File name to write
@@ -108,9 +130,10 @@ libnet_status vlan_create(const char *if_name, int vid)
         errno_t rc;
 
         rc = sprintf_s(vlan_if_name, sizeof(vlan_if_name), "%s.%d", if_name,vid);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < EOK) {
+                ERR_CHK(rc);
                 return CNL_STATUS_FAILURE;
+        }
 
         sk = libnet_alloc_socket();
         if (sk == NULL) {
@@ -469,9 +492,10 @@ libnet_status bridge_set_stp(const char *bridge_name, char *val)
 
         rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/bridge/stp_state",
                        bridge_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < EOK) {
+                ERR_CHK(rc);
                 return CNL_STATUS_FAILURE;
+        }
 
         if (-1 == access(file_name, F_OK | W_OK))
         {
@@ -629,9 +653,10 @@ int interface_exist(const char *if_name)
         errno_t rc;
 
         rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < EOK) {
+                ERR_CHK(rc);
                 return CNL_STATUS_FAILURE;
+        }
 
         if (0 == access(file_name, F_OK))
                 return CNL_STATUS_SUCCESS;
@@ -651,9 +676,10 @@ libnet_status interface_set_mtu(const char *if_name, char *val)
         errno_t rc;
 
         rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/mtu", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < EOK) {
+                ERR_CHK(rc);
                 return CNL_STATUS_FAILURE;
+        }
 
         return file_write(file_name, val, strlen(val) + 1);
 }
@@ -673,9 +699,10 @@ libnet_status interface_get_mac(const char *if_name, char *mac, size_t size)
         errno_t rc;
 
         rc = sprintf_s(file_name, sizeof(file_name), "/sys/class/net/%s/address", if_name);
-        ERR_CHK(rc);
-        if (rc < EOK)
+        if (rc < EOK) {
+                ERR_CHK(rc);
                 return CNL_STATUS_FAILURE;
+        }
 
         err = file_read(file_name, mac, size);
         if (err != CNL_STATUS_FAILURE) {
